@@ -1,0 +1,13 @@
+{text}
+
+Write several phrases for girl based on this conversation. Create phrases in different styles. Ask open-ended questions, try to show your interest in the girl.
+
+You are a man, your conversational partner is a woman.
+
+Phrases must be exhibit a playful, flirtatious, and sometimes teasing tone. They should use humor and lighthearted innuendo to express attraction or interest. The language is informal, which adds to the casual and friendly feel.
+
+Focus on creating a sense of connection and shared amusement through your words.
+
+Write only styles and list of phrases for each. Do not write description and introduction before phrases. Do not write conclusion and cautions after phrases.
+
+Write response in {language}.

@@ -1,0 +1,21 @@
+{image_description}
+
+{image_objects}
+
+Here's her profile description:
+
+```
+{profile_description}
+```
+
+Write several openers for girl on image described above. Create openers in different styles. Pay attention to her glaze, smile, face and emotions.
+
+Openers must be exhibit a playful, flirtatious, and sometimes teasing tone. They should use humor and lighthearted innuendo to express attraction or interest. The language is informal, with contractions and slang like vibe which adds to the casual and friendly feel.
+
+Start openers by identifying a common element in the examples, such as complimenting their appearance, referencing their online presence, or playfully teasing them about their personality. Then, use playful questions and suggestive language to keep the tone light and flirty. Don't be afraid to use humor and wordplay to add a touch of wit. Remember, the key is to be confident, genuine, and respectful while maintaining a playful and engaging tone.
+
+Focus on creating a sense of connection and shared amusement through your words.
+
+Write only styles and list of openers for each. Do not write description and introduction before phrases. Do not write conclusion and cautions after phrases.
+
+Write response in {language}.

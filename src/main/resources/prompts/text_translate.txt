@@ -1,0 +1,3 @@
+{text}
+
+Translate this text into {language}, preserving the context, and make the style less businesslike.
