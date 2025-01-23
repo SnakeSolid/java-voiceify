@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import ru.snake.bot.voiceify.consume.callback.Callback;
 import ru.snake.bot.voiceify.consume.callback.CallbackAction;
 import ru.snake.bot.voiceify.consume.callback.CommandAction;
 import ru.snake.bot.voiceify.consume.callback.MessageAction;
+import ru.snake.bot.voiceify.consume.callback.MessageUrlAction;
 import ru.snake.bot.voiceify.consume.callback.PhotosAction;
 import ru.snake.bot.voiceify.consume.callback.PhotosDescriptionAction;
 
@@ -42,7 +44,9 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private CallbackAction unknownCallback;
 
-	private MessageAction textAction;
+	private MessageUrlAction messageUrlAction;
+
+	private MessageAction messageAction;
 
 	private PhotosAction photosAction;
 
@@ -56,7 +60,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		this.callbacks = new HashMap<>();
 		this.unknownCommand = null;
 		this.unknownCallback = null;
-		this.textAction = null;
+		this.messageAction = null;
 		this.photosAction = null;
 		this.photosDescriptionAction = null;
 		this.accessDeniedAction = null;
@@ -87,7 +91,13 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 	}
 
 	public UpdateConsumer onMessage(final MessageAction callback) {
-		textAction = callback;
+		messageAction = callback;
+
+		return this;
+	}
+
+	public UpdateConsumer onMessage(final MessageUrlAction callback) {
+		messageUrlAction = callback;
 
 		return this;
 	}
@@ -165,12 +175,17 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		}
 
 		List<MessageEntity> entities = get(message, Message::hasEntities, Message::getEntities);
+		List<MessageEntity> urls = getUrls(entities);
+		List<MessageEntity> botCommands = getBotCommands(entities);
 		String text = get(message, Message::hasText, Message::getText);
 		List<PhotoSize> photos = get(message, Message::hasPhoto, Message::getPhoto);
 		String caption = message.getCaption();
-		List<MessageEntity> botCommands = getBotCommands(entities);
 
-		if (!botCommands.isEmpty()) {
+		if (!urls.isEmpty() && text != null) {
+			List<String> uriStrings = urls.stream().map(MessageEntity::getText).collect(Collectors.toList());
+
+			consume(messageUrlAction, action -> action.consume(context, text, uriStrings));
+		} else if (!botCommands.isEmpty()) {
 			for (MessageEntity entity : botCommands) {
 				String botCommand = entity.getText();
 
@@ -184,8 +199,24 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		} else if (photos != null) {
 			consume(photosAction, action -> action.consume(context, photos));
 		} else if (text != null) {
-			consume(textAction, action -> action.consume(context, text));
+			consume(messageAction, action -> action.consume(context, text));
 		}
+	}
+
+	private List<MessageEntity> getUrls(List<MessageEntity> entities) {
+		if (entities == null || entities.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<MessageEntity> result = new ArrayList<>();
+
+		for (MessageEntity entity : entities) {
+			if (Objects.equals(EntityType.URL, entity.getType())) {
+				result.add(entity);
+			}
+		}
+
+		return result;
 	}
 
 	private List<MessageEntity> getBotCommands(List<MessageEntity> entities) {
@@ -230,9 +261,10 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 	@Override
 	public String toString() {
 		return "UpdateConsumer [whiteList=" + whiteList + ", commands=" + commands + ", callbacks=" + callbacks
-				+ ", unknownCommand=" + unknownCommand + ", unknownCallback=" + unknownCallback + ", textAction="
-				+ textAction + ", photosAction=" + photosAction + ", photosDescriptionAction=" + photosDescriptionAction
-				+ ", accessDeniedAction=" + accessDeniedAction + "]";
+				+ ", unknownCommand=" + unknownCommand + ", unknownCallback=" + unknownCallback + ", messageUrlAction="
+				+ messageUrlAction + ", messageAction=" + messageAction + ", photosAction=" + photosAction
+				+ ", photosDescriptionAction=" + photosDescriptionAction + ", accessDeniedAction=" + accessDeniedAction
+				+ "]";
 	}
 
 }

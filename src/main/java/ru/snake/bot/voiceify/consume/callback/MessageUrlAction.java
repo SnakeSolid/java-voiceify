@@ -5,8 +5,8 @@ import java.util.List;
 import ru.snake.bot.voiceify.consume.Context;
 
 @FunctionalInterface
-public interface MessageAction {
+public interface MessageUrlAction {
 
-	public void consume(final Context context, final String text) throws Exception;
+	public void consume(final Context context, final String text, List<String> uriStrings) throws Exception;
 
 }

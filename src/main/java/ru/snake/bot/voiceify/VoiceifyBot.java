@@ -1,6 +1,7 @@
 package ru.snake.bot.voiceify;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,11 +39,33 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		this.worker = worker;
 
 		onMessage(this::processMessage);
+		onMessage(this::processMessageUrls);
 		onCommand("/start", this::commandStart);
 		onCommand("/help", this::commandHelp);
 		onCommand(this::commandInvalid);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
+	}
+
+	private void processMessage(final Context context, final String text) throws Exception {
+		ChatState chatState = database.getChatState(context.getChatId());
+
+		if (chatState == ChatState.DEFAULT) {
+			sendMessage(context.getChatId(), text);
+		} else {
+			unknownState(context.getChatId());
+		}
+	}
+
+	private void processMessageUrls(final Context context, final String text, final List<String> urlStrings)
+			throws Exception {
+		ChatState chatState = database.getChatState(context.getChatId());
+
+		if (chatState == ChatState.DEFAULT) {
+			sendMessage(context.getChatId(), urlStrings.toString());
+		} else {
+			unknownState(context.getChatId());
+		}
 	}
 
 	private void accessDenied(final Context context) throws IOException {
@@ -69,16 +92,6 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void commandInvalid(final Context context, final String command) throws IOException {
 		LOG.warn("Unknown bot command: {}", command);
-	}
-
-	private void processMessage(final Context context, final String text) throws Exception {
-		ChatState chatState = database.getChatState(context.getChatId());
-
-		if (chatState == ChatState.DEFAULT) {
-			sendMessage(context.getChatId(), text);
-		} else {
-			unknownState(context.getChatId());
-		}
 	}
 
 	private void unknownState(long chatId) throws IOException {
