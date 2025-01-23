@@ -1,14 +1,13 @@
 # Voiceify Bot
 
 A Telegram bot designed to simplify reading articles from websites. Bot convert
-artiles from URI, rewrite vidoe subtitles or read test message.
+articles from URI, rewrite video subtitles or read test message.
 
 ## Features
 
 - [ ] Read text message;
 - [ ] Read articles by URI;
 - [ ] Convert subtitles to structured article and read it;
-- [ ] Analyze dialog;
 - [ ] Support Russian and English voices.
 
 ## Build
@@ -37,9 +36,8 @@ will send user id in reply message.
 ## LLM Settings
 
 By default, the local ollama server located at `http://localhost:11434/`
-is used. The `llava-llama3` model is used for image description, and the
-`gemma2` model for text generation. These settings can be changed using
-the configuration file (option `--config`).
+is used. The `gemma2` model is used for text generation. These settings can be
+changed using the configuration file (option `--config`).
 
 Example of configuration file with default settings:
 
