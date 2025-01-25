@@ -16,6 +16,7 @@ import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.worker.Worker;
+import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.CaptionResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
@@ -76,7 +77,20 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		ChatState chatState = database.getChatState(context.getChatId());
 
 		if (chatState == ChatState.DEFAULT) {
-			sendMessage(context.getChatId(), urlStrings.toString());
+			for (String uri : urlStrings) {
+				ArticleResult resultArticle = worker.articleText(uri);
+				TextToSpeechResult resultTts = worker.textToSpeech(resultArticle.getText());
+
+				if (resultTts.isSuccess()) {
+					File speechPath = resultTts.getSpeechPath();
+
+					sendVoice(context.getChatId(), resultArticle.getTitle(), speechPath);
+
+					speechPath.delete();
+				} else {
+					sendMessage(context.getChatId(), "Failed to convert article: " + resultTts.getMessage());
+				}
+			}
 		} else {
 			unknownState(context.getChatId());
 		}

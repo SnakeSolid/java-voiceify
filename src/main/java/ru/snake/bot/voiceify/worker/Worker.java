@@ -7,8 +7,11 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,14 +21,19 @@ import io.github.ollama4j.models.chat.OllamaChatMessageRole;
 import io.github.ollama4j.models.chat.OllamaChatRequest;
 import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
 import io.github.ollama4j.models.chat.OllamaChatResult;
+import net.dankito.readability4j.Article;
+import net.dankito.readability4j.Readability4J;
 import ru.snake.bot.voiceify.Resource;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.CaptionResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
 public class Worker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+
+	private static final Set<String> SKIP_TAGS = Set.of("table", "code", "pre");
 
 	private final File cacheDirectory;
 
@@ -119,6 +127,19 @@ public class Worker {
 		LOG.info("Query result: {}", result);
 
 		return result;
+	}
+
+	public ArticleResult articleText(String uri) throws IOException {
+		Document document = Jsoup.connect(uri).timeout(60 * 1000).get();
+		document.select("table, code, pre").forEach(e -> e.remove());
+
+		String html = document.html();
+		Readability4J readability4J = new Readability4J(uri, html);
+		Article article = readability4J.parse();
+		String title = article.getTitle();
+		String text = article.getTextContent();
+
+		return ArticleResult.from(title, text);
 	}
 
 	@Override

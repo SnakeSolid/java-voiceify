@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,16 +174,14 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		}
 
 		List<MessageEntity> entities = get(message, Message::hasEntities, Message::getEntities);
-		List<MessageEntity> urls = getUrls(entities);
+		List<String> urlStrings = getUrlStrings(entities);
 		List<MessageEntity> botCommands = getBotCommands(entities);
 		String text = get(message, Message::hasText, Message::getText);
 		List<PhotoSize> photos = get(message, Message::hasPhoto, Message::getPhoto);
 		String caption = message.getCaption();
 
-		if (!urls.isEmpty() && text != null) {
-			List<String> uriStrings = urls.stream().map(MessageEntity::getText).collect(Collectors.toList());
-
-			consume(messageUrlAction, action -> action.consume(context, text, uriStrings));
+		if (!urlStrings.isEmpty() && text != null) {
+			consume(messageUrlAction, action -> action.consume(context, text, urlStrings));
 		} else if (!botCommands.isEmpty()) {
 			for (MessageEntity entity : botCommands) {
 				String botCommand = entity.getText();
@@ -203,16 +200,18 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		}
 	}
 
-	private List<MessageEntity> getUrls(List<MessageEntity> entities) {
+	private List<String> getUrlStrings(List<MessageEntity> entities) {
 		if (entities == null || entities.isEmpty()) {
 			return Collections.emptyList();
 		}
 
-		List<MessageEntity> result = new ArrayList<>();
+		List<String> result = new ArrayList<>();
 
 		for (MessageEntity entity : entities) {
 			if (Objects.equals(EntityType.URL, entity.getType())) {
-				result.add(entity);
+				result.add(entity.getText());
+			} else if (Objects.equals(EntityType.TEXTLINK, entity.getType())) {
+				result.add(entity.getUrl());
 			}
 		}
 

@@ -12,6 +12,8 @@
 		<configurate.version>4.1.2</configurate.version>
 		<ollama.version>1.0.91</ollama.version>
 		<mapdb.version>3.1.0</mapdb.version>
+		<readability.version>1.0.8</readability.version>
+		<jsoup.version>1.18.3</jsoup.version>
 		<telegrambots.version>8.2.0</telegrambots.version>
 		<junit.version>5.11.4</junit.version>
 
@@ -47,6 +49,16 @@
 			<groupId>org.mapdb</groupId>
 			<artifactId>mapdb</artifactId>
 			<version>${mapdb.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.dankito.readability4j</groupId>
+			<artifactId>readability4j</artifactId>
+			<version>${readability.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.telegram</groupId>
