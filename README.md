@@ -6,7 +6,7 @@ articles from URI, rewrite video subtitles or read test message.
 ## Features
 
 - [*] Read text message;
-- [ ] Read articles by URI;
+- [*] Read articles by URI;
 - [ ] Convert subtitles to structured article and read it;
 - [ ] Support Russian and English voices.
 
