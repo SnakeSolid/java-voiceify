@@ -1,5 +1,6 @@
 package ru.snake.bot.voiceify.consume;
 
+import java.io.File;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -9,6 +10,8 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -24,6 +27,22 @@ public class BotClientConsumer extends UpdateConsumer implements LongPollingSing
 		super(whiteList);
 
 		this.telegramClient = new OkHttpTelegramClient(botToken);
+	}
+
+	protected void sendVoice(long chatId, String text, File audioPath) {
+		InputFile audioFile = new InputFile(audioPath);
+		SendVoice voice = SendVoice.builder()
+			.chatId(chatId)
+			.parseMode(ParseMode.MARKDOWNV2)
+			.caption(Escaper.escapeMarkdown(text))
+			.voice(audioFile)
+			.build();
+
+		try {
+			telegramClient.execute(voice);
+		} catch (TelegramApiException e) {
+			LOG.warn("Failed to send voice message.", e);
+		}
 	}
 
 	protected void sendMessage(long chatId, String text) {

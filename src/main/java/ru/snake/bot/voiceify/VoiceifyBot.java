@@ -1,5 +1,6 @@
 package ru.snake.bot.voiceify;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.worker.TextToSpeechResult;
 import ru.snake.bot.voiceify.worker.Worker;
 
 public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
@@ -51,7 +53,17 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		ChatState chatState = database.getChatState(context.getChatId());
 
 		if (chatState == ChatState.DEFAULT) {
-			sendMessage(context.getChatId(), text);
+			TextToSpeechResult result = worker.textToSpeech(text);
+
+			if (result.isSuccess()) {
+				File speechPath = result.getSpeechPath();
+
+				sendVoice(context.getChatId(), text, speechPath);
+
+				speechPath.delete();
+			} else {
+				sendMessage(context.getChatId(), "Failed to convert text: " + result.getMessage());
+			}
 		} else {
 			unknownState(context.getChatId());
 		}

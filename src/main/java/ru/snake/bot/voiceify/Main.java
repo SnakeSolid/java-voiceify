@@ -1,6 +1,7 @@
 package ru.snake.bot.voiceify;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -58,21 +59,25 @@ public class Main {
 	private static Worker createWorker(final File configFile) {
 		WorkerSettings settings;
 
-		if (configFile == null) {
-			settings = WorkerSettings.create();
-		} else {
-			try {
-				settings = WorkerSettings.fromFile(configFile);
-			} catch (ConfigurateException e) {
-				LOG.error("Failed to load configuration.", e);
+		try {
+			settings = WorkerSettings.fromFile(configFile);
+		} catch (ConfigurateException e) {
+			LOG.error("Failed to load configuration.", e);
 
-				System.exit(1);
+			System.exit(1);
 
-				return null;
-			}
+			return null;
 		}
 
-		return Worker.create(settings);
+		try {
+			return Worker.create(settings);
+		} catch (IOException e) {
+			LOG.error("Failed to create worker.", e);
+
+			System.exit(1);
+
+			return null;
+		}
 	}
 
 }

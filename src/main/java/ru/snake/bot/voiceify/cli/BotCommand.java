@@ -11,7 +11,7 @@ public class BotCommand implements Runnable {
 
 	private final BotCallback callback;
 
-	@Option(names = { "-c", "--config" }, description = "LLM configuration file")
+	@Option(names = { "-c", "--config" }, description = "LLM configuration file", required = true)
 	private File config;
 
 	@Option(names = { "-d", "--database" }, description = "Path to database file")
