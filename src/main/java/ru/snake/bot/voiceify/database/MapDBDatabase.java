@@ -20,7 +20,7 @@ public class MapDBDatabase implements Database {
 
 	@Override
 	public ChatState getChatState(long chatId) {
-		return chatStates.getOrDefault(chatId, ChatState.DEFAULT);
+		return chatStates.getOrDefault(chatId, ChatState.empty());
 	}
 
 	@Override

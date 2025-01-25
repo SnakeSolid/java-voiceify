@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
@@ -32,8 +31,6 @@ import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 public class Worker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
-
-	private static final Set<String> SKIP_TAGS = Set.of("table", "code", "pre");
 
 	private final File cacheDirectory;
 

@@ -45,6 +45,23 @@ public class BotClientConsumer extends UpdateConsumer implements LongPollingSing
 		}
 	}
 
+	protected void replyVoice(long chatId, int messageId, String text, File audioPath) {
+		InputFile audioFile = new InputFile(audioPath);
+		SendVoice voice = SendVoice.builder()
+			.chatId(chatId)
+			.replyToMessageId(messageId)
+			.parseMode(ParseMode.MARKDOWNV2)
+			.caption(Escaper.escapeMarkdown(text))
+			.voice(audioFile)
+			.build();
+
+		try {
+			telegramClient.execute(voice);
+		} catch (TelegramApiException e) {
+			LOG.warn("Failed to send voice message.", e);
+		}
+	}
+
 	protected void sendMessage(long chatId, String text) {
 		SendMessage message = SendMessage.builder()
 			.chatId(chatId)

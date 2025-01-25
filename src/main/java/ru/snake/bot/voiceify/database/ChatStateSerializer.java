@@ -1,6 +1,8 @@
 package ru.snake.bot.voiceify.database;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
@@ -13,14 +15,27 @@ public class ChatStateSerializer extends GroupSerializerObjectArray<ChatState> {
 
 	@Override
 	public void serialize(DataOutput2 out, ChatState value) throws IOException {
-		out.writeInt(value.ordinal());
+		List<String> uriStrings = value.getUriStrings();
+
+		out.writeUTF(value.getText());
+		out.writeInt(uriStrings.size());
+
+		for (String uriString : uriStrings) {
+			out.writeUTF(uriString);
+		}
 	}
 
 	@Override
 	public ChatState deserialize(DataInput2 input, int available) throws IOException {
-		int index = input.readInt();
+		String text = input.readUTF();
+		List<String> uriStrings = new ArrayList<>();
+		int nUriStrings = input.readInt();
 
-		return ChatState.values()[index];
+		for (int index = 0; index < nUriStrings; index += 1) {
+			uriStrings.add(input.readUTF());
+		}
+
+		return ChatState.create(text, uriStrings);
 	}
 
 	@Override

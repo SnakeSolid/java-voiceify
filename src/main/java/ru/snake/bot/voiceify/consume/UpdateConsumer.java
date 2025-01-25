@@ -174,14 +174,14 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		}
 
 		List<MessageEntity> entities = get(message, Message::hasEntities, Message::getEntities);
-		List<String> urlStrings = getUrlStrings(entities);
+		List<MessageEntity> linkEntities = getLinks(entities);
 		List<MessageEntity> botCommands = getBotCommands(entities);
 		String text = get(message, Message::hasText, Message::getText);
 		List<PhotoSize> photos = get(message, Message::hasPhoto, Message::getPhoto);
 		String caption = message.getCaption();
 
-		if (!urlStrings.isEmpty() && text != null) {
-			consume(messageUrlAction, action -> action.consume(context, text, urlStrings));
+		if (!linkEntities.isEmpty() && text != null) {
+			consume(messageUrlAction, action -> action.consume(context, text, linkEntities));
 		} else if (!botCommands.isEmpty()) {
 			for (MessageEntity entity : botCommands) {
 				String botCommand = entity.getText();
@@ -200,18 +200,18 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		}
 	}
 
-	private List<String> getUrlStrings(List<MessageEntity> entities) {
+	private List<MessageEntity> getLinks(List<MessageEntity> entities) {
 		if (entities == null || entities.isEmpty()) {
 			return Collections.emptyList();
 		}
 
-		List<String> result = new ArrayList<>();
+		List<MessageEntity> result = new ArrayList<>();
 
 		for (MessageEntity entity : entities) {
 			if (Objects.equals(EntityType.URL, entity.getType())) {
-				result.add(entity.getText());
+				result.add(entity);
 			} else if (Objects.equals(EntityType.TEXTLINK, entity.getType())) {
-				result.add(entity.getUrl());
+				result.add(entity);
 			}
 		}
 
