@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -12,7 +13,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.ollama4j.OllamaAPI;
+import io.github.ollama4j.exceptions.OllamaBaseException;
+import io.github.ollama4j.models.chat.OllamaChatMessageRole;
+import io.github.ollama4j.models.chat.OllamaChatRequest;
+import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
+import io.github.ollama4j.models.chat.OllamaChatResult;
+import ru.snake.bot.voiceify.Resource;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.worker.data.CaptionResult;
+import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
 public class Worker {
 
@@ -38,7 +47,9 @@ public class Worker {
 		this.ttsCommand = ttsCommand;
 	}
 
-	public synchronized TextToSpeechResult textToSpeech(String text) {
+	public synchronized TextToSpeechResult textToSpeech(String text) throws IOException, InterruptedException {
+		LOG.info("Syntesing voice for `{}`", text);
+
 		File tempDirectory = new File(cacheDirectory, "temp");
 		File outputPath = new File(cacheDirectory, "output.mp3");
 
@@ -67,22 +78,47 @@ public class Worker {
 			builder.environment().put(variable, value);
 		}
 
-		try {
-			Process process = builder.start();
-			process.getOutputStream().write(text.getBytes());
-			process.getOutputStream().close();
-			int exitCode = process.waitFor();
+		Process process = builder.start();
+		process.getOutputStream().write(text.getBytes());
+		process.getOutputStream().close();
+		int exitCode = process.waitFor();
 
-			FileUtils.deleteDirectory(tempDirectory);
+		FileUtils.deleteDirectory(tempDirectory);
 
-			if (exitCode != 0) {
-				return TextToSpeechResult.fail(String.format("TTS exit code: %d", exitCode));
-			}
-		} catch (IOException | InterruptedException e) {
-			return TextToSpeechResult.fail(e.getMessage());
+		if (exitCode != 0) {
+			return TextToSpeechResult.fail(String.format("TTS exit code: %d", exitCode));
 		}
 
 		return TextToSpeechResult.success(outputPath);
+	}
+
+	public synchronized CaptionResult writeCaption(String text)
+			throws OllamaBaseException, IOException, InterruptedException {
+		LOG.info("Write caption for `{}`", text);
+
+		String caption = textQuery(Replacer.replace(Resource.asText("prompts/text_caption.txt"), Map.of("text", text)));
+
+		return CaptionResult.from(caption);
+	}
+
+	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
+		if (LOG.isInfoEnabled()) {
+			LOG.info("Execute text query: {}", Arrays.asList(messages));
+		}
+
+		OllamaChatRequestBuilder builder = OllamaChatRequestBuilder.getInstance(modelName);
+
+		for (String message : messages) {
+			builder.withMessage(OllamaChatMessageRole.USER, message);
+		}
+
+		OllamaChatRequest request = builder.build();
+		OllamaChatResult chat = ollamaApi.chat(request);
+		String result = chat.getResponseModel().getMessage().getContent();
+
+		LOG.info("Query result: {}", result);
+
+		return result;
 	}
 
 	@Override

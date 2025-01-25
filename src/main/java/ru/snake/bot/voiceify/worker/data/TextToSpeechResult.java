@@ -1,4 +1,4 @@
-package ru.snake.bot.voiceify.worker;
+package ru.snake.bot.voiceify.worker.data;
 
 import java.io.File;
 

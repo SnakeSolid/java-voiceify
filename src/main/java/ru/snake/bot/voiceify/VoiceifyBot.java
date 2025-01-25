@@ -15,8 +15,9 @@ import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
 import ru.snake.bot.voiceify.text.Replacer;
-import ru.snake.bot.voiceify.worker.TextToSpeechResult;
 import ru.snake.bot.voiceify.worker.Worker;
+import ru.snake.bot.voiceify.worker.data.CaptionResult;
+import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
 public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
 
@@ -53,16 +54,17 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		ChatState chatState = database.getChatState(context.getChatId());
 
 		if (chatState == ChatState.DEFAULT) {
-			TextToSpeechResult result = worker.textToSpeech(text);
+			TextToSpeechResult resultTts = worker.textToSpeech(text);
+			CaptionResult resultCaption = worker.writeCaption(text);
 
-			if (result.isSuccess()) {
-				File speechPath = result.getSpeechPath();
+			if (resultTts.isSuccess()) {
+				File speechPath = resultTts.getSpeechPath();
 
-				sendVoice(context.getChatId(), text, speechPath);
+				sendVoice(context.getChatId(), resultCaption.getCaption(), speechPath);
 
 				speechPath.delete();
 			} else {
-				sendMessage(context.getChatId(), "Failed to convert text: " + result.getMessage());
+				sendMessage(context.getChatId(), "Failed to convert text: " + resultTts.getMessage());
 			}
 		} else {
 			unknownState(context.getChatId());
