@@ -3,6 +3,8 @@
 A Telegram bot designed to simplify reading articles from websites. Bot convert
 articles from URI, rewrite video subtitles or read test message.
 
+![Bot usage example](images/voiceify.png)
+
 ## Features
 
 - [x] Read text message;
