@@ -1,4 +1,4 @@
-Come up with a short, capacious and attractive title for the next text.
-The title should reflect the main idea and be clear.
-Write only caption.
-Here is the text: {text}
+Come up with a short, capacious and attractive title for the next text. The title should reflect the main idea and be
+clear. Write only caption. Here is the text:
+
+{text}

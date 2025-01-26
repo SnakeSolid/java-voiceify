@@ -1,4 +1,4 @@
-package ru.snake.bot.voiceify.worker;
+package ru.snake.bot.voiceify.settings;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,7 +41,7 @@ public class CommandSettings {
 	}
 
 	public static CommandSettings fromNode(CommentedConfigurationNode node) throws SerializationException {
-		String command = node.node("command").getString();
+		String command = PathUtil.absolutePath(node.node("command").getString());
 		List<String> arguments = node.node("arguments").getList(String.class);
 		Map<String, String> environment = new LinkedHashMap<>();
 

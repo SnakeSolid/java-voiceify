@@ -2,6 +2,7 @@ package ru.snake.bot.voiceify;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +22,12 @@ import ru.snake.bot.voiceify.consume.BotClientConsumer;
 import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
+import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.worker.Worker;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.CaptionResult;
+import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
 public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
@@ -35,13 +38,22 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private static final String CALLBACK_LINK = ":link";
 
+	private final Settings settings;
+
 	private final Database database;
 
 	private final Worker worker;
 
-	public VoiceifyBot(final String botToken, final Set<Long> whiteList, final Database database, final Worker worker) {
+	public VoiceifyBot(
+		final String botToken,
+		final Set<Long> whiteList,
+		final Settings settings,
+		final Database database,
+		final Worker worker
+	) {
 		super(botToken, whiteList);
 
+		this.settings = settings;
 		this.database = database;
 		this.worker = worker;
 
@@ -104,6 +116,49 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		return keyboard;
 	}
 
+	// Read functions
+
+	private void readText(final Context context, final String text)
+			throws IOException, InterruptedException, OllamaBaseException {
+		TextToSpeechResult resultTts = worker.textToSpeech(text);
+		CaptionResult resultCaption = worker.writeCaption(text);
+
+		sendVoice(context, resultTts, resultCaption.getCaption());
+	}
+
+	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
+		for (String uri : urlStrings) {
+			String host = URI.create(uri).getHost();
+
+			if (settings.getVideoHosts().contains(host)) {
+				SubtitlesResult resultSubtitles = worker.videoSubtitles(uri);
+				String atricle = worker.subsToArticle(resultSubtitles.getSubtitles());
+				TextToSpeechResult resultTts = worker.textToSpeech(atricle);
+
+				sendVoice(context, resultTts, resultSubtitles.getTitle());
+			} else {
+				ArticleResult resultArticle = worker.articleText(uri);
+				TextToSpeechResult resultTts = worker.textToSpeech(resultArticle.getText());
+
+				sendVoice(context, resultTts, resultArticle.getTitle());
+			}
+		}
+	}
+
+	private void sendVoice(final Context context, TextToSpeechResult resultTts, String caption) {
+		if (resultTts.isSuccess()) {
+			File speechPath = resultTts.getSpeechPath();
+
+			replyVoice(context.getChatId(), context.getMessageId(), caption, speechPath);
+
+			speechPath.delete();
+		} else {
+			sendMessage(context.getChatId(), "Failed to convert text: " + resultTts.getMessage());
+		}
+	}
+
+	// Basic commands.
+
 	private void accessDenied(final Context context) throws IOException {
 		sendMessage(
 			context.getChatId(),
@@ -117,44 +172,6 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 		LOG.warn("Unknown callback action: {}", callback);
 	}
-
-	// Read functions
-
-	private void readText(final Context context, final String text)
-			throws IOException, InterruptedException, OllamaBaseException {
-		TextToSpeechResult resultTts = worker.textToSpeech(text);
-		CaptionResult resultCaption = worker.writeCaption(text);
-
-		if (resultTts.isSuccess()) {
-			File speechPath = resultTts.getSpeechPath();
-
-			replyVoice(context.getChatId(), context.getMessageId(), resultCaption.getCaption(), speechPath);
-
-			speechPath.delete();
-		} else {
-			sendMessage(context.getChatId(), "Failed to convert text: " + resultTts.getMessage());
-		}
-	}
-
-	private void readLinks(final Context context, final List<String> urlStrings)
-			throws IOException, InterruptedException {
-		for (String uri : urlStrings) {
-			ArticleResult resultArticle = worker.articleText(uri);
-			TextToSpeechResult resultTts = worker.textToSpeech(resultArticle.getText());
-
-			if (resultTts.isSuccess()) {
-				File speechPath = resultTts.getSpeechPath();
-
-				replyVoice(context.getChatId(), context.getMessageId(), resultArticle.getTitle(), speechPath);
-
-				speechPath.delete();
-			} else {
-				sendMessage(context.getChatId(), "Failed to convert article: " + resultTts.getMessage());
-			}
-		}
-	}
-
-	// Basic commands.
 
 	private void commandStart(final Context context, final String command) throws IOException {
 		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"));

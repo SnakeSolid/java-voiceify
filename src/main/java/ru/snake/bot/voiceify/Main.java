@@ -13,8 +13,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import picocli.CommandLine;
 import ru.snake.bot.voiceify.cli.BotCommand;
 import ru.snake.bot.voiceify.database.Database;
+import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.worker.Worker;
-import ru.snake.bot.voiceify.worker.WorkerSettings;
 
 public class Main {
 
@@ -32,9 +32,10 @@ public class Main {
 		final String botToken,
 		final Set<Long> allowUsers
 	) {
-		Worker worker = createWorker(configFile);
+		Settings settings = createSettings(configFile);
+		Worker worker = createWorker(settings);
 		Database database = createDatabase(databaseFile);
-		VoiceifyBot bot = new VoiceifyBot(botToken, allowUsers, database, worker);
+		VoiceifyBot bot = new VoiceifyBot(botToken, allowUsers, settings, database, worker);
 
 		try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
 			botsApplication.registerBot(botToken, bot);
@@ -48,6 +49,18 @@ public class Main {
 		}
 	}
 
+	private static Settings createSettings(File configFile) {
+		try {
+			return Settings.fromFile(configFile);
+		} catch (ConfigurateException e) {
+			LOG.error("Failed to load configuration.", e);
+
+			System.exit(1);
+
+			return null;
+		}
+	}
+
 	private static Database createDatabase(File databaseFile) {
 		if (databaseFile != null) {
 			return Database.onDisk(databaseFile);
@@ -56,19 +69,7 @@ public class Main {
 		}
 	}
 
-	private static Worker createWorker(final File configFile) {
-		WorkerSettings settings;
-
-		try {
-			settings = WorkerSettings.fromFile(configFile);
-		} catch (ConfigurateException e) {
-			LOG.error("Failed to load configuration.", e);
-
-			System.exit(1);
-
-			return null;
-		}
-
+	private static Worker createWorker(final Settings settings) {
 		try {
 			return Worker.create(settings);
 		} catch (IOException e) {

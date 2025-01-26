@@ -8,7 +8,7 @@ public class Replacer {
 
 	private static final Pattern PATTERN = Pattern.compile("\\{([_0-9A-Za-z]+)}");
 
-	public static String replace(String text, Map<String, Object> perameters) {
+	public static String replace(String text, Map<String, ? extends Object> perameters) {
 		StringBuilder builder = new StringBuilder();
 		Matcher matcher = PATTERN.matcher(text);
 		int offset = 0;
@@ -24,9 +24,11 @@ public class Replacer {
 				builder.append(part);
 			}
 
-			Object value = perameters.getOrDefault(name, "");
+			Object value = perameters.get(name);
 
-			builder.append(value);
+			if (value != null) {
+				builder.append(value.toString());
+			}
 
 			offset = end;
 		}
