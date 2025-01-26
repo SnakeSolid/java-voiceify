@@ -12,7 +12,11 @@ import ru.snake.bot.voiceify.ytdlp.data.SubtitleRow;
 
 public class YtDlp {
 
-	private static final String SUBS_HEADER = "Language ";
+	private static final String SUBS_LANGUAGE = "Language";
+
+	private static final String SUBS_NAME = "Name";
+
+	private static final String SUBS_FORMATS = "Formats";
 
 	private static final String DESTINATION = "[download] Destination: ";
 
@@ -61,11 +65,19 @@ public class YtDlp {
 		try (StringReader stringReader = new StringReader(stdout);
 				BufferedReader reader = new BufferedReader(stringReader)) {
 			String line = reader.readLine();
+			int indexName = 0;
+			int indexFormats = 0;
 
 			while (line != null) {
-				if (!line.startsWith(SUBS_HEADER)) {
-					SubtitleRow row = SubtitleRow.from(line);
-					result.add(row);
+				if (line.startsWith(SUBS_LANGUAGE)) {
+					indexName = line.indexOf(SUBS_NAME);
+					indexFormats = line.indexOf(SUBS_FORMATS);
+				} else {
+					SubtitleRow row = SubtitleRow.from(line, indexName, indexFormats);
+
+					if (row != null) {
+						result.add(row);
+					}
 				}
 
 				line = reader.readLine();

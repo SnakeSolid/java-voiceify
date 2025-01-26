@@ -2,27 +2,33 @@ package ru.snake.bot.voiceify.ytdlp.data;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class SubtitleRow {
 
-	private static final Pattern ROW_PATTERN = Pattern
-		.compile("^(\\w{2,3}(-\\w+)?)\\s+([- ()\\w]+)\\s([0-9a-z]+(, [0-9a-z]+)*)", Pattern.UNICODE_CHARACTER_CLASS);
-
 	private static final String ORIGINAL = "-orig";
+
+	private static final String TRANSLATION = " from ";
 
 	private final String language;
 
 	private final boolean original;
 
+	private final boolean translation;
+
 	private final String name;
 
 	private final List<String> formats;
 
-	public SubtitleRow(final String language, final boolean original, final String name, final List<String> formats) {
+	public SubtitleRow(
+		final String language,
+		final boolean original,
+		final boolean translation,
+		final String name,
+		final List<String> formats
+	) {
 		this.language = language;
 		this.original = original;
+		this.translation = translation;
 		this.name = name;
 		this.formats = formats;
 	}
@@ -35,6 +41,10 @@ public class SubtitleRow {
 		return original;
 	}
 
+	public boolean isTranslation() {
+		return translation;
+	}
+
 	public String getName() {
 		return name;
 	}
@@ -45,20 +55,23 @@ public class SubtitleRow {
 
 	@Override
 	public String toString() {
-		return "SubtitleRow [language=" + language + ", original=" + original + ", name=" + name + ", formats="
-				+ formats + "]";
+		return "SubtitleRow [language=" + language + ", original=" + original + ", translation=" + translation
+				+ ", name=" + name + ", formats=" + formats + "]";
 	}
 
-	public static SubtitleRow from(String line) {
-		Matcher matcher = ROW_PATTERN.matcher(line);
+	public static SubtitleRow from(String line, int indexName, int indexFormats) {
+		if (0 < indexName && indexName < indexFormats) {
+			String language = line.substring(0, indexName).trim();
+			String name = line.substring(indexName, indexFormats).trim();
+			String formats = line.substring(indexFormats).trim();
 
-		if (matcher.matches()) {
-			String language = matcher.group(1);
-			String postfix = matcher.group(2);
-			String name = matcher.group(3).stripTrailing();
-			String formats = matcher.group(4);
-
-			return new SubtitleRow(language, ORIGINAL.equals(postfix), name, Arrays.asList(formats.split(", ")));
+			return new SubtitleRow(
+				language,
+				language.endsWith(ORIGINAL),
+				name.contains(TRANSLATION),
+				name,
+				Arrays.asList(formats.split(", "))
+			);
 		} else {
 			return null;
 		}

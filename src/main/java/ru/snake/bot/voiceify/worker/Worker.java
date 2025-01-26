@@ -147,11 +147,29 @@ public class Worker {
 		String videoUrl = uri;
 		String title = ytDlp.title(videoUrl);
 		List<SubtitleRow> allSubs = ytDlp.listSubs(videoUrl);
-		SubtitleRow originalSubs = allSubs.stream().filter(SubtitleRow::isOriginal).findFirst().get();
+		SubtitleRow originalSubs = findBestSubs(allSubs);
 		File subsPath = ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3");
 		String text = removeFile(subsPath, this::subsToText);
 
 		return SubtitlesResult.success(title, text);
+	}
+
+	private SubtitleRow findBestSubs(List<SubtitleRow> allSubs) {
+		SubtitleRow source = null;
+
+		for (SubtitleRow subs : allSubs) {
+			if (subs.isOriginal()) {
+				return subs;
+			} else if (!subs.isTranslation()) {
+				source = subs;
+			}
+		}
+
+		if (source != null) {
+			return source;
+		}
+
+		return allSubs.get(0);
 	}
 
 	public String subsToArticle(String text) throws IOException, OllamaBaseException, InterruptedException {
