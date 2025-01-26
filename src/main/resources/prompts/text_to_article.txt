@@ -1,5 +1,2 @@
-Transform the following podcast subtitles into a well-structured, engaging, and informative article. The article should
-maintain the original meaning and key points while improving readability, flow, and coherence. Use clear paragraphs,
-appropriate headings, and a professional tone. Avoid adding any information not present in the subtitles. Focus on
-making the content suitable for a blog or news article format. Write in Russian. Here are the subtitles:
+Transform the transcript into a clean, readable text. Remove pauses, filler words (e.g., 'um', 'like', 'uh'), repetitions, and any irrelevant interjections. If the transcript contains advertisements (mentions of products, services, promo codes, or calls to action), completely exclude them. Do not add any headings, introductions, conclusions, or additional formatting—provide only the core content as plain text. Write text in Russian. Here's the transcript:
 
