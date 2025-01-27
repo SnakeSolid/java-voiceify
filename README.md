@@ -10,7 +10,7 @@ articles from URI, rewrite video subtitles or read test message.
 - [x] Read text message;
 - [x] Read articles by URI;
 - [x] Convert subtitles to structured article and read it;
-- [ ] Support Russian and English voices.
+- [x] Support Russian and English voices.
 
 ## Build
 
