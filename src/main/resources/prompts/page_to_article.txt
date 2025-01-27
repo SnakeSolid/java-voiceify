@@ -1,2 +1,0 @@
-Transform the transcript into a clean, readable text. Remove pauses, filler words (e.g., 'um', 'like', 'uh'), repetitions, and any irrelevant interjections. If the transcript contains advertisements (mentions of products, services, promo codes, or calls to action), completely exclude them. Do not add any headings, introductions, conclusions, or additional formatting—provide only the core content as plain text. Write text in Russian. Here's the transcript:
-

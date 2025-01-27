@@ -1,10 +1,8 @@
 package ru.snake.bot.voiceify.worker;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -31,9 +29,11 @@ import net.dankito.readability4j.Article;
 import net.dankito.readability4j.Readability4J;
 import net.dankito.readability4j.extended.Readability4JExtended;
 import ru.snake.bot.voiceify.Resource;
+import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.CommandSettings;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.util.SentenceIterator;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.CaptionResult;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
@@ -74,7 +74,7 @@ public class Worker {
 	}
 
 	public synchronized TextToSpeechResult textToSpeech(String text) throws IOException, InterruptedException {
-		LOG.info("Syntesing voice for `{}`", text);
+		LOG.info("Synthesizing voice for `{}`", text);
 
 		File tempDirectory = new File(cacheDirectory, "temp");
 		File outputPath = new File(cacheDirectory, "output.mp3");
@@ -84,6 +84,7 @@ public class Worker {
 		}
 
 		Map<String, String> parameters = Map.ofEntries(
+			Map.entry("language", Translation.languageCode(text)),
 			Map.entry("output", outputPath.getAbsolutePath()),
 			Map.entry("temp", tempDirectory.getAbsolutePath())
 		);
@@ -151,7 +152,7 @@ public class Worker {
 		File subsPath = ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3");
 		String text = removeFile(subsPath, this::subsToText);
 
-		return SubtitlesResult.success(title, text);
+		return new SubtitlesResult(title, text);
 	}
 
 	private SubtitleRow findBestSubs(List<SubtitleRow> allSubs) {
@@ -173,43 +174,67 @@ public class Worker {
 	}
 
 	public String subsToArticle(String text) throws IOException, OllamaBaseException, InterruptedException {
-		String fullText = Resource.asText("prompts/text_to_article.txt") + text;
+		String prompt = Resource.asText("prompts/text_to_article.txt");
 
-		if (fullText.length() <= contextLength) {
-			String result = textQuery(fullText);
+		if (prompt.length() + text.length() <= contextLength) {
+			String result = textQuery(prompt + text);
 
 			return result;
 		} else {
-			String prompt = Resource.asText("prompts/page_to_article.txt");
 			StringBuilder builder = new StringBuilder();
 			StringBuilder result = new StringBuilder();
 
-			try (StringReader stringReader = new StringReader(text);
-					BufferedReader reader = new BufferedReader(stringReader)) {
-				String line = reader.readLine();
+			for (String line : new SentenceIterator(text)) {
+				if (prompt.length() + builder.length() + line.length() >= contextLength) {
+					String page = textQuery(prompt + builder.toString());
 
-				while (line != null) {
-					if (prompt.length() + builder.length() + line.length() >= contextLength) {
-						String page = textQuery(prompt + builder.toString());
-
-						result.append(page);
-						builder.setLength(0);
-					}
-
-					builder.append(line);
-					builder.append('\n');
-					line = reader.readLine();
+					result.append(page);
+					builder.setLength(0);
 				}
+
+				builder.append(line);
 			}
 
 			if (builder.length() > 0) {
-				String page = textQuery(Replacer.replace(prompt, Map.of("text", builder.toString())));
+				String page = textQuery(prompt + builder.toString());
 
 				result.append(page);
 			}
 
 			return result.toString();
 		}
+	}
+
+	public String translateText(final String text, final Language language)
+			throws IOException, OllamaBaseException, InterruptedException {
+		if (!Translation.isNeedTranslation(text, language)) {
+			return text;
+		}
+
+		String languageName = Translation.languageName(language);
+		String prompt = Replacer
+			.replace(Resource.asText("prompts/text_translate.txt"), Map.of("language", languageName));
+		StringBuilder builder = new StringBuilder();
+		StringBuilder result = new StringBuilder();
+
+		for (String line : new SentenceIterator(text)) {
+			if (prompt.length() + builder.length() + line.length() >= contextLength) {
+				String page = textQuery(prompt + builder.toString());
+
+				result.append(page);
+				builder.setLength(0);
+			}
+
+			builder.append(line);
+		}
+
+		if (builder.length() > 0) {
+			String page = textQuery(prompt + builder.toString());
+
+			result.append(page);
+		}
+
+		return result.toString();
 	}
 
 	private <T> T removeFile(File file, FileCallback<T> callback) throws Exception {

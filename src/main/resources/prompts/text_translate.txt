@@ -1,0 +1,4 @@
+Translate the following text into {language}. Maintain the precise structure of your text, including paragraphs, bullet
+points, formatting, and order of presentation. Do not add any additional comments, explanations or changes to the
+structure. The translation should be as close as possible to the original in meaning and style. Here is the text:
+

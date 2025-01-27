@@ -22,6 +22,7 @@ import ru.snake.bot.voiceify.consume.BotClientConsumer;
 import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
+import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.worker.Worker;
@@ -37,6 +38,20 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	private static final String CALLBACK_TEXT = ":text";
 
 	private static final String CALLBACK_LINK = ":link";
+
+	private static final String CALLBACK_IGNORE = ":language_ignore";
+
+	private static final String CALLBACK_ENGLISH = ":language_en";
+
+	private static final String CALLBACK_RUSSIAN = ":language_ru";
+
+	private static final Map<String, Language> LANGUAGE_MAP = Map.ofEntries(
+		Map.entry(CALLBACK_IGNORE, Language.IGNORE),
+		Map.entry(CALLBACK_ENGLISH, Language.ENGLISH),
+		Map.entry(CALLBACK_RUSSIAN, Language.RUSSIAN)
+	);
+
+	private static final Language DEAFULT_LANGUAGE = Language.IGNORE;
 
 	private final Settings settings;
 
@@ -60,10 +75,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		onMessage(this::processMessage);
 		onMessage(this::processMessageUrls);
 		onCommand("/start", this::commandStart);
+		onCommand("/settings", this::commandSettings);
 		onCommand("/help", this::commandHelp);
 		onCommand(this::commandInvalid);
 		onCallback(CALLBACK_TEXT, this::readAsText);
 		onCallback(CALLBACK_LINK, this::readAsLink);
+		onCallback(CALLBACK_IGNORE, this::setLanguage);
+		onCallback(CALLBACK_ENGLISH, this::setLanguage);
+		onCallback(CALLBACK_RUSSIAN, this::setLanguage);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
 	}
@@ -79,6 +98,18 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		sendCallbackAnswer(queryId);
 		ChatState state = database.getChatState(context.getChatId());
 		readLinks(context, state.getUriStrings());
+	}
+
+	public void setLanguage(final Context context, final String queryId, final String command) throws Exception {
+		sendCallbackAnswer(queryId);
+
+		Language language = LANGUAGE_MAP.getOrDefault(command, DEAFULT_LANGUAGE);
+		database.setLanguage(context.getChatId(), language);
+
+		sendMessage(
+			context.getChatId(),
+			Replacer.replace(Resource.asText("texts/language_set.txt"), Map.of("language", getDisplayName(language)))
+		);
 	}
 
 	private void processMessage(final Context context, final String text) throws Exception {
@@ -107,38 +138,35 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		}
 	}
 
-	private ReplyKeyboard massageTypeMenu() {
-		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Прочитат текст").callbackData(CALLBACK_TEXT).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить ссылки").callbackData(CALLBACK_LINK).build());
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
-
-		return keyboard;
-	}
-
 	// Read functions
 
 	private void readText(final Context context, final String text)
 			throws IOException, InterruptedException, OllamaBaseException {
-		TextToSpeechResult resultTts = worker.textToSpeech(text);
-		CaptionResult resultCaption = worker.writeCaption(text);
+		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+		String content = worker.translateText(text, language);
+		TextToSpeechResult resultTts = worker.textToSpeech(content);
+		CaptionResult resultCaption = worker.writeCaption(content);
 
 		sendVoice(context, resultTts, resultCaption.getCaption());
 	}
 
 	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
+		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
 
 			if (settings.getVideoHosts().contains(host)) {
 				SubtitlesResult resultSubtitles = worker.videoSubtitles(uri);
 				String atricle = worker.subsToArticle(resultSubtitles.getSubtitles());
-				TextToSpeechResult resultTts = worker.textToSpeech(atricle);
+				String content = worker.translateText(atricle, language);
+				TextToSpeechResult resultTts = worker.textToSpeech(content);
 
 				sendVoice(context, resultTts, resultSubtitles.getTitle());
 			} else {
 				ArticleResult resultArticle = worker.articleText(uri);
-				TextToSpeechResult resultTts = worker.textToSpeech(resultArticle.getText());
+				String content = worker.translateText(resultArticle.getText(), language);
+				TextToSpeechResult resultTts = worker.textToSpeech(content);
 
 				sendVoice(context, resultTts, resultArticle.getTitle());
 			}
@@ -177,12 +205,62 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"));
 	}
 
+	private void commandSettings(final Context context, final String command) throws IOException {
+		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+
+		sendMessage(
+			context.getChatId(),
+			Replacer
+				.replace(Resource.asText("texts/command_settings.txt"), Map.of("language", getDisplayName(language))),
+			settingsMenu()
+		);
+	}
+
 	private void commandHelp(final Context context, final String command) throws IOException {
 		sendMessage(context.getChatId(), Resource.asText("texts/command_help.txt"));
 	}
 
 	private void commandInvalid(final Context context, final String command) throws IOException {
 		LOG.warn("Unknown bot command: {}", command);
+	}
+
+	// Menu buttons
+
+	private ReplyKeyboard massageTypeMenu() {
+		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
+		rowTwo.add(InlineKeyboardButton.builder().text("Прочитат текст").callbackData(CALLBACK_TEXT).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить ссылки").callbackData(CALLBACK_LINK).build());
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
+
+		return keyboard;
+	}
+
+	private ReplyKeyboard settingsMenu() {
+		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
+		rowTwo.add(InlineKeyboardButton.builder().text("Оригинал").callbackData(CALLBACK_IGNORE).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("English").callbackData(CALLBACK_ENGLISH).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Русский").callbackData(CALLBACK_RUSSIAN).build());
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
+
+		return keyboard;
+	}
+
+	// Utility functions
+
+	public String getDisplayName(Language language) {
+		switch (language) {
+		case IGNORE:
+			return "Не переводить";
+
+		case ENGLISH:
+			return "Английский";
+
+		case RUSSIAN:
+			return "Русский";
+
+		default:
+			return "Неизвестно";
+		}
 	}
 
 }

@@ -1,13 +1,12 @@
 package ru.snake.bot.voiceify.ytdlp;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import ru.snake.bot.voiceify.util.SentenceIterator;
 import ru.snake.bot.voiceify.ytdlp.data.SubtitleRow;
 
 public class YtDlp {
@@ -61,29 +60,20 @@ public class YtDlp {
 		YtDlpResponse response = execute(request);
 		String stdout = response.getStdOut();
 		List<SubtitleRow> result = new ArrayList<>();
+		int indexName = 0;
+		int indexFormats = 0;
 
-		try (StringReader stringReader = new StringReader(stdout);
-				BufferedReader reader = new BufferedReader(stringReader)) {
-			String line = reader.readLine();
-			int indexName = 0;
-			int indexFormats = 0;
+		for (String line : new SentenceIterator(stdout)) {
+			if (line.startsWith(SUBS_LANGUAGE)) {
+				indexName = line.indexOf(SUBS_NAME);
+				indexFormats = line.indexOf(SUBS_FORMATS);
+			} else {
+				SubtitleRow row = SubtitleRow.from(line, indexName, indexFormats);
 
-			while (line != null) {
-				if (line.startsWith(SUBS_LANGUAGE)) {
-					indexName = line.indexOf(SUBS_NAME);
-					indexFormats = line.indexOf(SUBS_FORMATS);
-				} else {
-					SubtitleRow row = SubtitleRow.from(line, indexName, indexFormats);
-
-					if (row != null) {
-						result.add(row);
-					}
+				if (row != null) {
+					result.add(row);
 				}
-
-				line = reader.readLine();
 			}
-		} catch (IOException e) {
-			throw new YtDlpException(e);
 		}
 
 		return result;
@@ -102,23 +92,14 @@ public class YtDlp {
 		YtDlpResponse response = execute(request);
 		String stdout = response.getStdOut();
 
-		try (StringReader stringReader = new StringReader(stdout);
-				BufferedReader reader = new BufferedReader(stringReader)) {
-			String line = reader.readLine();
+		for (String line : new SentenceIterator(stdout)) {
+			if (line.startsWith(DESTINATION)) {
+				String filename = line.substring(DESTINATION.length());
+				File result = new File(workingDirectory, filename);
+				result.deleteOnExit();
 
-			while (line != null) {
-				if (line.startsWith(DESTINATION)) {
-					String filename = line.substring(DESTINATION.length());
-					File result = new File(workingDirectory, filename);
-					result.deleteOnExit();
-
-					return result;
-				}
-
-				line = reader.readLine();
+				return result;
 			}
-		} catch (IOException e) {
-			throw new YtDlpException(e);
 		}
 
 		return null;

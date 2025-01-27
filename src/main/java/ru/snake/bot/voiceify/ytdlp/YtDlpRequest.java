@@ -56,10 +56,6 @@ public class YtDlpRequest {
 	public YtDlpRequest() {
 	}
 
-	public YtDlpRequest(String url) {
-		this.url = url;
-	}
-
 	protected List<String> buildOptions() {
 		List<String> result = new ArrayList<>();
 
