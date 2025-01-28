@@ -25,6 +25,7 @@ import ru.snake.bot.voiceify.database.Database;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.util.DomainMatcher;
 import ru.snake.bot.voiceify.worker.Worker;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.CaptionResult;
@@ -156,7 +157,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
 
-			if (settings.getVideoHosts().contains(host)) {
+			if (DomainMatcher.match(host, settings.getVideoHosts())) {
 				SubtitlesResult resultSubtitles = worker.videoSubtitles(uri);
 				String atricle = worker.subsToArticle(resultSubtitles.getSubtitles());
 				String content = worker.translateText(atricle, language);
