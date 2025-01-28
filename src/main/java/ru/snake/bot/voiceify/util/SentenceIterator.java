@@ -1,5 +1,6 @@
 package ru.snake.bot.voiceify.util;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -7,10 +8,19 @@ public class SentenceIterator implements Iterable<String>, Iterator<String> {
 
 	private final String text;
 
+	private final char[] chars;
+
 	private int offset;
 
 	public SentenceIterator(String text) {
 		this.text = text;
+		this.chars = new char[] { '\n', '.', '!', '?' };
+		this.offset = 0;
+	}
+
+	public SentenceIterator(String text, char... chars) {
+		this.text = text;
+		this.chars = chars;
 		this.offset = 0;
 	}
 
@@ -25,7 +35,7 @@ public class SentenceIterator implements Iterable<String>, Iterator<String> {
 			throw new NoSuchElementException();
 		}
 
-		int indexSeparator = separatorIndex('\n', '.', '!', '?');
+		int indexSeparator = separatorIndex();
 		int index = offset;
 
 		if (indexSeparator != -1) {
@@ -37,7 +47,7 @@ public class SentenceIterator implements Iterable<String>, Iterator<String> {
 		return text.substring(index, offset);
 	}
 
-	private int separatorIndex(char... chars) {
+	private int separatorIndex() {
 		int index = -1;
 
 		for (char ch : chars) {
@@ -60,7 +70,7 @@ public class SentenceIterator implements Iterable<String>, Iterator<String> {
 
 	@Override
 	public String toString() {
-		return "SentenceIterator [text=" + text + ", offset=" + offset + "]";
+		return "SentenceIterator [text=" + text + ", chars=" + Arrays.toString(chars) + ", offset=" + offset + "]";
 	}
 
 }

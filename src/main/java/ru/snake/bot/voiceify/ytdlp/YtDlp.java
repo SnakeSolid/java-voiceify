@@ -63,7 +63,7 @@ public class YtDlp {
 		int indexName = 0;
 		int indexFormats = 0;
 
-		for (String line : new SentenceIterator(stdout)) {
+		for (String line : new SentenceIterator(stdout, '\n')) {
 			if (line.startsWith(SUBS_LANGUAGE)) {
 				indexName = line.indexOf(SUBS_NAME);
 				indexFormats = line.indexOf(SUBS_FORMATS);
@@ -92,9 +92,9 @@ public class YtDlp {
 		YtDlpResponse response = execute(request);
 		String stdout = response.getStdOut();
 
-		for (String line : new SentenceIterator(stdout)) {
+		for (String line : new SentenceIterator(stdout, '\n')) {
 			if (line.startsWith(DESTINATION)) {
-				String filename = line.substring(DESTINATION.length());
+				String filename = line.substring(DESTINATION.length()).trim();
 				File result = new File(workingDirectory, filename);
 				result.deleteOnExit();
 
