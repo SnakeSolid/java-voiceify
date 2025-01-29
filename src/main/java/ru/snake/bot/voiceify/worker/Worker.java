@@ -1,326 +1,187 @@
 package ru.snake.bot.voiceify.worker;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.lang.ProcessBuilder.Redirect;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
-import org.apache.commons.io.FileUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.github.ollama4j.OllamaAPI;
 import io.github.ollama4j.exceptions.OllamaBaseException;
-import io.github.ollama4j.models.chat.OllamaChatMessageRole;
-import io.github.ollama4j.models.chat.OllamaChatRequest;
-import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
-import io.github.ollama4j.models.chat.OllamaChatResult;
-import net.dankito.readability4j.Article;
-import net.dankito.readability4j.Readability4J;
-import net.dankito.readability4j.extended.Readability4JExtended;
-import ru.snake.bot.voiceify.Resource;
+import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.Language;
-import ru.snake.bot.voiceify.settings.CommandSettings;
 import ru.snake.bot.voiceify.settings.Settings;
-import ru.snake.bot.voiceify.text.Replacer;
-import ru.snake.bot.voiceify.util.SentenceIterator;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
-import ru.snake.bot.voiceify.worker.data.CaptionResult;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
-import ru.snake.bot.voiceify.ytdlp.YtDlp;
-import ru.snake.bot.voiceify.ytdlp.data.SubtitleRow;
+import ru.snake.bot.voiceify.worker.service.LlmService;
+import ru.snake.bot.voiceify.worker.service.TtsService;
+import ru.snake.bot.voiceify.worker.service.WebService;
+import ru.snake.bot.voiceify.worker.service.YtService;
 
 public class Worker {
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final int QUEUE_SIZE = 100;
 
-	private final File cacheDirectory;
+	private final LlmService llmService;
 
-	private final OllamaAPI ollamaApi;
+	private final WebService webService;
 
-	private final String modelName;
+	private final YtService ytService;
 
-	private final int contextLength;
+	private final TtsService ttsService;
 
-	private final CommandSettings ttsCommand;
+	private final BlockingQueue<Job> queue;
 
-	private final YtDlp ytDlp;
+	private CallbackSuccess callbackSuccess;
+
+	private CallbackError callbackError;
 
 	public Worker(
-		final File cacheDirectory,
-		final OllamaAPI ollamaApi,
-		final String modelName,
-		final int contextLength,
-		final CommandSettings ttsCommand,
-		final YtDlp ytDlp
+		final LlmService llmService,
+		final WebService webService,
+		final YtService ytService,
+		final TtsService ttsService
 	) {
-		this.cacheDirectory = cacheDirectory;
-		this.ollamaApi = ollamaApi;
-		this.modelName = modelName;
-		this.contextLength = contextLength;
-		this.ttsCommand = ttsCommand;
-		this.ytDlp = ytDlp;
+		this.llmService = llmService;
+		this.webService = webService;
+		this.ytService = ytService;
+		this.ttsService = ttsService;
+		this.queue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+		this.callbackSuccess = null;
+		this.callbackError = null;
 	}
 
-	public synchronized TextToSpeechResult textToSpeech(String text) throws IOException, InterruptedException {
-		LOG.info("Synthesizing voice for `{}`", text);
-
-		File tempDirectory = new File(cacheDirectory, "temp");
-		File outputPath = new File(cacheDirectory, "output.mp3");
-
-		if (outputPath.exists()) {
-			outputPath.delete();
-		}
-
-		Map<String, String> parameters = Map.ofEntries(
-			Map.entry("language", Translation.languageCode(text)),
-			Map.entry("output", outputPath.getAbsolutePath()),
-			Map.entry("temp", tempDirectory.getAbsolutePath())
-		);
-		Process process = startProcess(ttsCommand, parameters, false);
-		process.getOutputStream().write(text.getBytes());
-		process.getOutputStream().close();
-		int exitCode = process.waitFor();
-
-		FileUtils.deleteDirectory(tempDirectory);
-
-		if (exitCode != 0) {
-			return TextToSpeechResult.fail(String.format("TTS exit code: %d", exitCode));
-		}
-
-		return TextToSpeechResult.success(outputPath);
+	public void setCallbackSuccess(CallbackSuccess callbackSuccess) {
+		this.callbackSuccess = callbackSuccess;
 	}
 
-	public synchronized CaptionResult writeCaption(String text)
-			throws OllamaBaseException, IOException, InterruptedException {
-		LOG.info("Write caption for `{}`", text);
-
-		String caption = textQuery(Replacer.replace(Resource.asText("prompts/text_caption.txt"), Map.of("text", text)));
-
-		return CaptionResult.from(caption);
+	public void setCallbackError(CallbackError callbackError) {
+		this.callbackError = callbackError;
 	}
 
-	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
-		if (LOG.isInfoEnabled()) {
-			LOG.info("Execute text query: {}", Arrays.asList(messages));
-		}
-
-		OllamaChatRequestBuilder builder = OllamaChatRequestBuilder.getInstance(modelName);
-
-		for (String message : messages) {
-			builder.withMessage(OllamaChatMessageRole.USER, message);
-		}
-
-		OllamaChatRequest request = builder.build();
-		OllamaChatResult chat = ollamaApi.chat(request);
-		String result = chat.getResponseModel().getMessage().getContent();
-
-		LOG.info("Query result: {}", result);
-
-		return result;
+	public void start() {
+		Thread thread = new Thread(this::messageLoop, "Worker thread");
+		thread.setDaemon(true);
+		thread.start();
 	}
 
-	public ArticleResult articleText(String uri) throws IOException {
-		Document document = Jsoup.connect(uri).timeout(60 * 1000).get();
-		document.select("table, code, pre").forEach(e -> e.remove());
+	public int sendText(Context context, String text, Language language) throws InterruptedException {
+		Job job = Job.text(context.getChatId(), context.getMessageId(), text, language);
+		queue.put(job);
 
-		String html = document.html();
-		Readability4J readability4J = new Readability4JExtended(uri, html);
-		Article article = readability4J.parse();
-		String title = article.getTitle();
-		String text = article.getTextContent();
-
-		return ArticleResult.from(title, text);
+		return queue.size();
 	}
 
-	public SubtitlesResult videoSubtitles(String uri) throws Exception {
-		String videoUrl = uri;
-		String title = ytDlp.title(videoUrl);
-		List<SubtitleRow> allSubs = ytDlp.listSubs(videoUrl);
-		SubtitleRow originalSubs = findBestSubs(allSubs);
-		File subsPath = ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3");
-		String text = removeFile(subsPath, this::subsToText);
+	public int queueArticle(Context context, String uri, Language language) throws InterruptedException {
+		Job job = Job.article(context.getChatId(), context.getMessageId(), uri, language);
+		queue.put(job);
 
-		return new SubtitlesResult(title, text);
+		return queue.size();
 	}
 
-	private SubtitleRow findBestSubs(List<SubtitleRow> allSubs) {
-		SubtitleRow source = null;
+	public int queueVideo(Context context, String uri, Language language) throws InterruptedException {
+		Job job = Job.video(context.getChatId(), context.getMessageId(), uri, language);
+		queue.put(job);
 
-		for (SubtitleRow subs : allSubs) {
-			if (subs.isOriginal()) {
-				return subs;
-			} else if (!subs.isTranslation()) {
-				source = subs;
-			}
-		}
-
-		if (source != null) {
-			return source;
-		}
-
-		return allSubs.get(0);
+		return queue.size();
 	}
 
-	public String subsToArticle(String text) throws IOException, OllamaBaseException, InterruptedException {
-		String prompt = Resource.asText("prompts/text_to_article.txt");
+	private void messageLoop() {
+		while (true) {
+			Job job;
 
-		if (prompt.length() + text.length() <= contextLength) {
-			String result = textQuery(prompt + text);
-
-			return result;
-		} else {
-			StringBuilder builder = new StringBuilder();
-			StringBuilder result = new StringBuilder();
-
-			for (String line : new SentenceIterator(text)) {
-				if (prompt.length() + builder.length() + line.length() >= contextLength) {
-					String page = textQuery(prompt + builder.toString());
-
-					result.append(page);
-					builder.setLength(0);
-				}
-
-				builder.append(line);
+			try {
+				job = queue.take();
+			} catch (InterruptedException e) {
+				break;
 			}
 
-			if (builder.length() > 0) {
-				String page = textQuery(prompt + builder.toString());
+			Language language = job.getLanguage();
 
-				result.append(page);
+			switch (job.getType()) {
+			case TEXT:
+				sendResult(job, () -> processText(job.getText(), language));
+				break;
+
+			case ARTICLE:
+				sendResult(job, () -> processArticle(job.getUri(), language));
+				break;
+
+			case VIDEO:
+				sendResult(job, () -> processVideo(job.getUri(), language));
+				break;
+
+			default:
 			}
-
-			return result.toString();
 		}
 	}
 
-	public String translateText(final String text, final Language language)
-			throws IOException, OllamaBaseException, InterruptedException {
-		if (!Translation.isNeedTranslation(text, language)) {
-			return text;
-		}
-
-		String languageName = Translation.languageName(language);
-		String prompt = Replacer
-			.replace(Resource.asText("prompts/text_translate.txt"), Map.of("language", languageName));
-		StringBuilder builder = new StringBuilder();
-		StringBuilder result = new StringBuilder();
-
-		for (String line : new SentenceIterator(text)) {
-			if (prompt.length() + builder.length() + line.length() >= contextLength) {
-				String page = textQuery(prompt + builder.toString());
-
-				result.append(page);
-				builder.setLength(0);
-			}
-
-			builder.append(line);
-		}
-
-		if (builder.length() > 0) {
-			String page = textQuery(prompt + builder.toString());
-
-			result.append(page);
-		}
-
-		return result.toString();
-	}
-
-	private <T> T removeFile(File file, FileCallback<T> callback) throws Exception {
+	private void sendResult(Job job, Processor<JobResult> processor) {
 		try {
-			return callback.call(file);
-		} finally {
-			file.delete();
-		}
-	}
+			JobResult result = processor.process();
 
-	private String subsToText(File subsPath) throws IOException {
-		StringBuilder result = new StringBuilder();
-
-		try (FileReader reader = new FileReader(subsPath)) {
-			JSONTokener tokener = new JSONTokener(reader);
-			JSONObject jsonObject = new JSONObject(tokener);
-			JSONArray events = jsonObject.getJSONArray("events");
-
-			for (int i = 0; i < events.length(); i++) {
-				JSONObject event = events.getJSONObject(i);
-
-				if (!event.has("segs")) {
-					continue;
-				}
-
-				JSONArray segments = event.getJSONArray("segs");
-
-				for (int j = 0; j < segments.length(); j++) {
-					JSONObject segment = segments.getJSONObject(j);
-					String text = segment.getString("utf8");
-					result.append(text);
-				}
+			if (result.isSuccess()) {
+				callbackSuccess.call(job.getChatId(), job.getMessageId(), result.getCaption(), result.getSpeechPath());
+			} else {
+				callbackError.call(job.getChatId(), job.getMessageId(), result.getMessage());
 			}
+		} catch (Exception e) {
+			callbackError.call(job.getChatId(), job.getMessageId(), e.getMessage());
 		}
-
-		return result.toString();
 	}
 
-	private Process
-			startProcess(final CommandSettings command, final Map<String, String> parameters, boolean pipeStdOut)
-					throws IOException {
-		ProcessBuilder builder = new ProcessBuilder(command.getCommand()).redirectInput(Redirect.PIPE)
-			.redirectOutput(pipeStdOut ? Redirect.PIPE : Redirect.DISCARD)
-			.redirectError(Redirect.DISCARD);
+	private JobResult processVideo(String uri, Language language)
+			throws Exception, IOException, OllamaBaseException, InterruptedException {
+		SubtitlesResult resultSubtitles = ytService.videoSubtitles(uri);
+		String atricle = llmService.subsToArticle(resultSubtitles.getSubtitles());
+		String content = llmService.translateText(atricle, language);
+		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
 
-		for (String argument : command.getArguments()) {
-			String value = Replacer.replace(argument, parameters);
+		return new JobResult(
+			resultTts.isSuccess(),
+			resultSubtitles.getTitle(),
+			resultTts.getSpeechPath(),
+			resultTts.getMessage()
+		);
+	}
 
-			builder.command().add(value);
-		}
+	private JobResult processArticle(String uri, Language language)
+			throws IOException, OllamaBaseException, InterruptedException {
+		ArticleResult resultArticle = webService.articleText(uri);
+		String content = llmService.translateText(resultArticle.getText(), language);
+		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
 
-		for (Entry<String, String> entry : command.getEnvironment().entrySet()) {
-			String variable = entry.getKey();
-			String value = entry.getValue();
+		return new JobResult(
+			resultTts.isSuccess(),
+			resultArticle.getTitle(),
+			resultTts.getSpeechPath(),
+			resultTts.getMessage()
+		);
+	}
 
-			builder.environment().put(variable, value);
-		}
+	private JobResult processText(String text, Language language)
+			throws OllamaBaseException, IOException, InterruptedException {
+		String content = llmService.translateText(text, language);
+		String caption = llmService.writeCaption(content);
+		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
 
-		return builder.start();
+		return new JobResult(resultTts.isSuccess(), caption, resultTts.getSpeechPath(), resultTts.getMessage());
 	}
 
 	@Override
 	public String toString() {
-		return "Worker [cacheDirectory=" + cacheDirectory + ", ollamaApi=" + ollamaApi + ", modelName=" + modelName
-				+ ", ttsCommand=" + ttsCommand + ", ytDlp=" + ytDlp + "]";
+		return "Worker [llmService=" + llmService + ", webService=" + webService + ", ytService=" + ytService
+				+ ", ttsService=" + ttsService + ", callbackSuccess=" + callbackSuccess + ", callbackError="
+				+ callbackError + ", queue=" + queue + "]";
 	}
 
-	public static Worker create(Settings settings) throws IOException {
-		File cacheDirectory = Files.createTempDirectory("voiceify_").toFile();
-		cacheDirectory.deleteOnExit();
+	public static Worker create(final File cacheDirectory, final Settings settings) {
+		LlmService llmService = LlmService.create(settings);
+		TtsService ttsService = TtsService.create(settings, cacheDirectory);
+		WebService webService = WebService.create();
+		YtService ytService = YtService.create(settings, cacheDirectory);
+		Worker worker = new Worker(llmService, webService, ytService, ttsService);
 
-		OllamaAPI ollamaApi = new OllamaAPI(settings.getOllamaUri());
-		ollamaApi.setRequestTimeoutSeconds(settings.getTimeout());
-		ollamaApi.setVerbose(false);
-
-		String ytDlpPath = settings.getYtDlpPath();
-		YtDlp ytDlp = new YtDlp(ytDlpPath, cacheDirectory);
-
-		return new Worker(
-			cacheDirectory,
-			ollamaApi,
-			settings.getModelName(),
-			settings.getContextLength(),
-			settings.getTtsCommand(),
-			ytDlp
-		);
+		return worker;
 	}
 
 }

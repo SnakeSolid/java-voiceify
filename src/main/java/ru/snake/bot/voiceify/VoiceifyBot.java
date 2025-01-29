@@ -27,10 +27,6 @@ import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.util.DomainMatcher;
 import ru.snake.bot.voiceify.worker.Worker;
-import ru.snake.bot.voiceify.worker.data.ArticleResult;
-import ru.snake.bot.voiceify.worker.data.CaptionResult;
-import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
-import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
 public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
 
@@ -86,6 +82,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		onCallback(CALLBACK_RUSSIAN, this::setLanguage);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
+	}
+
+	public void sendVoiceMessage(final long chatId, final int messageId, final String caption, final File path) {
+		replyVoice(chatId, messageId, caption, path);
+	}
+
+	public void logError(final long chatId, final int messageId, final String message) {
+		sendMessage(chatId, message);
 	}
 
 	public void readAsText(final Context context, final String queryId, final String command) throws Exception {
@@ -144,11 +148,12 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	private void readText(final Context context, final String text)
 			throws IOException, InterruptedException, OllamaBaseException {
 		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
-		String content = worker.translateText(text, language);
-		TextToSpeechResult resultTts = worker.textToSpeech(content);
-		CaptionResult resultCaption = worker.writeCaption(content);
+		int queueLength = worker.sendText(context, text, language);
 
-		sendVoice(context, resultTts, resultCaption.getCaption());
+		sendMessage(
+			context.getChatId(),
+			Replacer.replace(Resource.asText("texts/queue_size.txt"), Map.of("length", queueLength))
+		);
 	}
 
 	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
@@ -156,33 +161,18 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
+			int queueLength;
 
 			if (DomainMatcher.match(host, settings.getVideoHosts())) {
-				SubtitlesResult resultSubtitles = worker.videoSubtitles(uri);
-				String atricle = worker.subsToArticle(resultSubtitles.getSubtitles());
-				String content = worker.translateText(atricle, language);
-				TextToSpeechResult resultTts = worker.textToSpeech(content);
-
-				sendVoice(context, resultTts, resultSubtitles.getTitle());
+				queueLength = worker.queueVideo(context, uri, language);
 			} else {
-				ArticleResult resultArticle = worker.articleText(uri);
-				String content = worker.translateText(resultArticle.getText(), language);
-				TextToSpeechResult resultTts = worker.textToSpeech(content);
-
-				sendVoice(context, resultTts, resultArticle.getTitle());
+				queueLength = worker.queueArticle(context, uri, language);
 			}
-		}
-	}
 
-	private void sendVoice(final Context context, TextToSpeechResult resultTts, String caption) {
-		if (resultTts.isSuccess()) {
-			File speechPath = resultTts.getSpeechPath();
-
-			replyVoice(context.getChatId(), context.getMessageId(), caption, speechPath);
-
-			speechPath.delete();
-		} else {
-			sendMessage(context.getChatId(), "Failed to convert text: " + resultTts.getMessage());
+			sendMessage(
+				context.getChatId(),
+				Replacer.replace(Resource.asText("texts/queue_size.txt"), Map.of("length", queueLength))
+			);
 		}
 	}
 

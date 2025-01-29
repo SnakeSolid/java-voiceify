@@ -2,6 +2,7 @@ package ru.snake.bot.voiceify;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -33,9 +34,22 @@ public class Main {
 		final Set<Long> allowUsers
 	) {
 		Settings settings = createSettings(configFile);
-		Worker worker = createWorker(settings);
 		Database database = createDatabase(databaseFile);
+		File cacheDirectory;
+
+		try {
+			cacheDirectory = createCacheDirectory();
+		} catch (IOException e) {
+			LOG.error("Failed to create temporary directory.", e);
+
+			return;
+		}
+
+		Worker worker = Worker.create(cacheDirectory, settings);
 		VoiceifyBot bot = new VoiceifyBot(botToken, allowUsers, settings, database, worker);
+		worker.setCallbackSuccess(bot::sendVoiceMessage);
+		worker.setCallbackError(bot::logError);
+		worker.start();
 
 		try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
 			botsApplication.registerBot(botToken, bot);
@@ -47,6 +61,13 @@ public class Main {
 		} catch (Exception e) {
 			LOG.error("Unknown error.", e);
 		}
+	}
+
+	private static File createCacheDirectory() throws IOException {
+		File cacheDirectory = Files.createTempDirectory("voiceify_").toFile();
+		cacheDirectory.deleteOnExit();
+
+		return cacheDirectory;
 	}
 
 	private static Settings createSettings(File configFile) {
@@ -66,18 +87,6 @@ public class Main {
 			return Database.onDisk(databaseFile);
 		} else {
 			return Database.inMemory();
-		}
-	}
-
-	private static Worker createWorker(final Settings settings) {
-		try {
-			return Worker.create(settings);
-		} catch (IOException e) {
-			LOG.error("Failed to create worker.", e);
-
-			System.exit(1);
-
-			return null;
 		}
 	}
 
