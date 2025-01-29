@@ -140,10 +140,14 @@ public class Worker {
 			if (result.isSuccess()) {
 				callbackSuccess.call(job.getChatId(), job.getMessageId(), result.getCaption(), result.getSpeechPath());
 			} else {
-				callbackError.call(job.getChatId(), job.getMessageId(), result.getMessage());
+				callbackError.call(job.getChatId(), job.getMessageId(), job.getUri(), result.getMessage());
 			}
 		} catch (Exception e) {
-			callbackError.call(job.getChatId(), job.getMessageId(), e.getMessage());
+			try {
+				callbackError.call(job.getChatId(), job.getMessageId(), job.getUri(), e.getMessage());
+			} catch (Exception ee) {
+				LOG.warn("Failed to execute error callback", ee);
+			}
 		}
 	}
 

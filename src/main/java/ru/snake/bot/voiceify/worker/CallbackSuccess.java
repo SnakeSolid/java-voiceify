@@ -5,6 +5,6 @@ import java.io.File;
 @FunctionalInterface
 public interface CallbackSuccess {
 
-	public void call(final long chatId, final int messageId, final String caption, final File path);
+	public void call(final long chatId, final int messageId, final String caption, final File path) throws Exception;
 
 }

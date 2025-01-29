@@ -89,8 +89,17 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		replyVoice(chatId, messageId, caption, path);
 	}
 
-	public void logError(final long chatId, final int messageId, final String message) {
-		sendMessage(chatId, message);
+	public void logError(final long chatId, final int messageId, final String uri, final String message)
+			throws IOException {
+		if (uri != null) {
+			Map<String, Object> params = Map.of("uri", uri, "message", message);
+
+			sendMessage(chatId, Replacer.replace(Resource.asText("texts/error_uri.txt"), params));
+		} else {
+			Map<String, Object> params = Map.of("message", message);
+
+			sendMessage(chatId, Replacer.replace(Resource.asText("texts/error_text.txt"), params));
+		}
 	}
 
 	// Message handlers
