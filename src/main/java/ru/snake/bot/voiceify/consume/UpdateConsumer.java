@@ -16,7 +16,6 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.EntityType;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
@@ -26,8 +25,6 @@ import ru.snake.bot.voiceify.consume.callback.CallbackAction;
 import ru.snake.bot.voiceify.consume.callback.CommandAction;
 import ru.snake.bot.voiceify.consume.callback.MessageAction;
 import ru.snake.bot.voiceify.consume.callback.MessageUrlAction;
-import ru.snake.bot.voiceify.consume.callback.PhotosAction;
-import ru.snake.bot.voiceify.consume.callback.PhotosDescriptionAction;
 
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
@@ -47,10 +44,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private MessageAction messageAction;
 
-	private PhotosAction photosAction;
-
-	private PhotosDescriptionAction photosDescriptionAction;
-
 	private AccessDeniedAction accessDeniedAction;
 
 	public UpdateConsumer(final Set<Long> whiteList) {
@@ -60,8 +53,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		this.unknownCommand = null;
 		this.unknownCallback = null;
 		this.messageAction = null;
-		this.photosAction = null;
-		this.photosDescriptionAction = null;
 		this.accessDeniedAction = null;
 	}
 
@@ -97,18 +88,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	public UpdateConsumer onMessage(final MessageUrlAction callback) {
 		messageUrlAction = callback;
-
-		return this;
-	}
-
-	public UpdateConsumer onPhotos(final PhotosAction callback) {
-		photosAction = callback;
-
-		return this;
-	}
-
-	public UpdateConsumer onPhotos(final PhotosDescriptionAction callback) {
-		photosDescriptionAction = callback;
 
 		return this;
 	}
@@ -177,8 +156,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		List<MessageEntity> linkEntities = getLinks(entities);
 		List<MessageEntity> botCommands = getBotCommands(entities);
 		String text = get(message, Message::hasText, Message::getText);
-		List<PhotoSize> photos = get(message, Message::hasPhoto, Message::getPhoto);
-		String caption = message.getCaption();
 
 		if (!linkEntities.isEmpty() && text != null) {
 			consume(messageUrlAction, action -> action.consume(context, text, linkEntities));
@@ -191,10 +168,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 					command -> command.consume(context, botCommand)
 				);
 			}
-		} else if (photos != null && caption != null) {
-			consume(photosDescriptionAction, action -> action.consume(context, photos, caption));
-		} else if (photos != null) {
-			consume(photosAction, action -> action.consume(context, photos));
 		} else if (text != null) {
 			consume(messageAction, action -> action.consume(context, text));
 		}
@@ -261,8 +234,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 	public String toString() {
 		return "UpdateConsumer [whiteList=" + whiteList + ", commands=" + commands + ", callbacks=" + callbacks
 				+ ", unknownCommand=" + unknownCommand + ", unknownCallback=" + unknownCallback + ", messageUrlAction="
-				+ messageUrlAction + ", messageAction=" + messageAction + ", photosAction=" + photosAction
-				+ ", photosDescriptionAction=" + photosDescriptionAction + ", accessDeniedAction=" + accessDeniedAction
+				+ messageUrlAction + ", messageAction=" + messageAction + ", accessDeniedAction=" + accessDeniedAction
 				+ "]";
 	}
 
