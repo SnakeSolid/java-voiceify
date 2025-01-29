@@ -242,9 +242,9 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 			} else {
 				worker.queueArticle(context, uri, language);
 			}
-
-			sendQueueStatus(context.getChatId());
 		}
+
+		sendQueueStatus(context.getChatId());
 	}
 
 	private void sendQueueStatus(long chatId) throws IOException {
