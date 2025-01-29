@@ -4,6 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.github.ollama4j.exceptions.OllamaBaseException;
 import ru.snake.bot.voiceify.consume.Context;
@@ -19,6 +23,8 @@ import ru.snake.bot.voiceify.worker.service.YtService;
 
 public class Worker {
 
+	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+
 	private static final int QUEUE_SIZE = 100;
 
 	private final LlmService llmService;
@@ -30,6 +36,8 @@ public class Worker {
 	private final TtsService ttsService;
 
 	private final BlockingQueue<Job> queue;
+
+	private final AtomicBoolean processing;
 
 	private CallbackSuccess callbackSuccess;
 
@@ -46,8 +54,17 @@ public class Worker {
 		this.ytService = ytService;
 		this.ttsService = ttsService;
 		this.queue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+		this.processing = new AtomicBoolean();
 		this.callbackSuccess = null;
 		this.callbackError = null;
+	}
+
+	public int getQueueLength() {
+		return queue.size();
+	}
+
+	public boolean isProcessing() {
+		return processing.get();
 	}
 
 	public void setCallbackSuccess(CallbackSuccess callbackSuccess) {
@@ -64,25 +81,25 @@ public class Worker {
 		thread.start();
 	}
 
-	public int sendText(Context context, String text, Language language) throws InterruptedException {
+	public void sendText(Context context, String text, Language language) throws InterruptedException {
+		LOG.info("Queued text `{}`", text);
+
 		Job job = Job.text(context.getChatId(), context.getMessageId(), text, language);
 		queue.put(job);
-
-		return queue.size();
 	}
 
-	public int queueArticle(Context context, String uri, Language language) throws InterruptedException {
+	public void queueArticle(Context context, String uri, Language language) throws InterruptedException {
+		LOG.info("Queued article: {}", uri);
+
 		Job job = Job.article(context.getChatId(), context.getMessageId(), uri, language);
 		queue.put(job);
-
-		return queue.size();
 	}
 
-	public int queueVideo(Context context, String uri, Language language) throws InterruptedException {
+	public void queueVideo(Context context, String uri, Language language) throws InterruptedException {
+		LOG.info("Queued video: {}", uri);
+
 		Job job = Job.video(context.getChatId(), context.getMessageId(), uri, language);
 		queue.put(job);
-
-		return queue.size();
 	}
 
 	private void messageLoop() {
@@ -90,7 +107,9 @@ public class Worker {
 			Job job;
 
 			try {
+				processing.set(false);
 				job = queue.take();
+				processing.set(true);
 			} catch (InterruptedException e) {
 				break;
 			}
@@ -131,6 +150,8 @@ public class Worker {
 
 	private JobResult processVideo(String uri, Language language)
 			throws Exception, IOException, OllamaBaseException, InterruptedException {
+		LOG.info("Processing video: {}", uri);
+
 		SubtitlesResult resultSubtitles = ytService.videoSubtitles(uri);
 		String atricle = llmService.subsToArticle(resultSubtitles.getSubtitles());
 		String content = llmService.translateText(atricle, language);
@@ -146,6 +167,8 @@ public class Worker {
 
 	private JobResult processArticle(String uri, Language language)
 			throws IOException, OllamaBaseException, InterruptedException {
+		LOG.info("Processing acticle: {}", uri);
+
 		ArticleResult resultArticle = webService.articleText(uri);
 		String content = llmService.translateText(resultArticle.getText(), language);
 		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
@@ -160,6 +183,8 @@ public class Worker {
 
 	private JobResult processText(String text, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
+		LOG.info("Processing acticle `{}`", text);
+
 		String content = llmService.translateText(text, language);
 		String caption = llmService.writeCaption(content);
 		TextToSpeechResult resultTts = ttsService.textToSpeech(content);

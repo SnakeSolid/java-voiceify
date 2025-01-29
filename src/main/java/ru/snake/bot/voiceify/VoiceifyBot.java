@@ -72,6 +72,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		onMessage(this::processMessage);
 		onMessage(this::processMessageUrls);
 		onCommand("/start", this::commandStart);
+		onCommand("/status", this::commandStatus);
 		onCommand("/settings", this::commandSettings);
 		onCommand("/help", this::commandHelp);
 		onCommand(this::commandInvalid);
@@ -92,30 +93,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		sendMessage(chatId, message);
 	}
 
-	public void readAsText(final Context context, final String queryId, final String command) throws Exception {
-		sendCallbackAnswer(queryId);
-
-		ChatState state = database.getChatState(context.getChatId());
-		readText(context, state.getText());
-	}
-
-	public void readAsLink(final Context context, final String queryId, final String command) throws Exception {
-		sendCallbackAnswer(queryId);
-		ChatState state = database.getChatState(context.getChatId());
-		readLinks(context, state.getUriStrings());
-	}
-
-	public void setLanguage(final Context context, final String queryId, final String command) throws Exception {
-		sendCallbackAnswer(queryId);
-
-		Language language = LANGUAGE_MAP.getOrDefault(command, DEAFULT_LANGUAGE);
-		database.setLanguage(context.getChatId(), language);
-
-		sendMessage(
-			context.getChatId(),
-			Replacer.replace(Resource.asText("texts/language_set.txt"), Map.of("language", getDisplayName(language)))
-		);
-	}
+	// Message handlers
 
 	private void processMessage(final Context context, final String text) throws Exception {
 		readText(context, text);
@@ -143,57 +121,21 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		}
 	}
 
-	// Read functions
-
-	private void readText(final Context context, final String text)
-			throws IOException, InterruptedException, OllamaBaseException {
-		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
-		int queueLength = worker.sendText(context, text, language);
-
-		sendMessage(
-			context.getChatId(),
-			Replacer.replace(Resource.asText("texts/queue_size.txt"), Map.of("length", queueLength))
-		);
-	}
-
-	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
-		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
-
-		for (String uri : urlStrings) {
-			String host = URI.create(uri).getHost();
-			int queueLength;
-
-			if (DomainMatcher.match(host, settings.getVideoHosts())) {
-				queueLength = worker.queueVideo(context, uri, language);
-			} else {
-				queueLength = worker.queueArticle(context, uri, language);
-			}
-
-			sendMessage(
-				context.getChatId(),
-				Replacer.replace(Resource.asText("texts/queue_size.txt"), Map.of("length", queueLength))
-			);
-		}
-	}
-
-	// Basic commands.
-
-	private void accessDenied(final Context context) throws IOException {
-		sendMessage(
-			context.getChatId(),
-			Replacer.replace("Access denied. User ID = {user_id}.", Map.of("user_id", context.getUserId()))
-		);
-	}
-
-	private void callbackInvalid(final Context context, final String queryId, final String callback)
-			throws IOException {
-		sendCallbackAnswer(queryId);
-
-		LOG.warn("Unknown callback action: {}", callback);
-	}
+	// Bot commands.
 
 	private void commandStart(final Context context, final String command) throws IOException {
 		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"));
+	}
+
+	private void commandStatus(final Context context, final String command) throws IOException {
+		Map<String, Integer> params = Map.of("length", worker.getQueueLength());
+		boolean processing = worker.isProcessing();
+
+		if (processing) {
+			sendMessage(context.getChatId(), Replacer.replace(Resource.asText("texts/status_processing.txt"), params));
+		} else {
+			sendMessage(context.getChatId(), Replacer.replace(Resource.asText("texts/status_size.txt"), params));
+		}
 	}
 
 	private void commandSettings(final Context context, final String command) throws IOException {
@@ -212,7 +154,50 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private void commandInvalid(final Context context, final String command) throws IOException {
-		LOG.warn("Unknown bot command: {}", command);
+		sendMessage(context.getChatId(), Resource.asText("texts/unknown_command.txt"));
+	}
+
+	// Callback actions
+
+	private void readAsText(final Context context, final String queryId, final String command) throws Exception {
+		sendCallbackAnswer(queryId);
+
+		ChatState state = database.getChatState(context.getChatId());
+		readText(context, state.getText());
+	}
+
+	private void readAsLink(final Context context, final String queryId, final String command) throws Exception {
+		sendCallbackAnswer(queryId);
+		ChatState state = database.getChatState(context.getChatId());
+		readLinks(context, state.getUriStrings());
+	}
+
+	private void setLanguage(final Context context, final String queryId, final String command) throws Exception {
+		sendCallbackAnswer(queryId);
+
+		Language language = LANGUAGE_MAP.getOrDefault(command, DEAFULT_LANGUAGE);
+		database.setLanguage(context.getChatId(), language);
+
+		sendMessage(
+			context.getChatId(),
+			Replacer.replace(Resource.asText("texts/language_set.txt"), Map.of("language", getDisplayName(language)))
+		);
+	}
+
+	// Basic commands
+
+	private void accessDenied(final Context context) throws IOException {
+		sendMessage(
+			context.getChatId(),
+			Replacer.replace("Access denied. User ID = {user_id}.", Map.of("user_id", context.getUserId()))
+		);
+	}
+
+	private void callbackInvalid(final Context context, final String queryId, final String callback)
+			throws IOException {
+		sendCallbackAnswer(queryId);
+
+		LOG.warn("Unknown callback action: {}", callback);
 	}
 
 	// Menu buttons
@@ -238,7 +223,42 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	// Utility functions
 
-	public String getDisplayName(Language language) {
+	private void readText(final Context context, final String text)
+			throws IOException, InterruptedException, OllamaBaseException {
+		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+		worker.sendText(context, text, language);
+
+		sendQueueStatus(context.getChatId());
+	}
+
+	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
+		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+
+		for (String uri : urlStrings) {
+			String host = URI.create(uri).getHost();
+
+			if (DomainMatcher.match(host, settings.getVideoHosts())) {
+				worker.queueVideo(context, uri, language);
+			} else {
+				worker.queueArticle(context, uri, language);
+			}
+
+			sendQueueStatus(context.getChatId());
+		}
+	}
+
+	private void sendQueueStatus(long chatId) throws IOException {
+		Map<String, Integer> params = Map.of("length", worker.getQueueLength());
+		boolean processing = worker.isProcessing();
+
+		if (processing) {
+			sendMessage(chatId, Replacer.replace(Resource.asText("texts/queue_processing.txt"), params));
+		} else {
+			sendMessage(chatId, Replacer.replace(Resource.asText("texts/queue_size.txt"), params));
+		}
+	}
+
+	private String getDisplayName(Language language) {
 		switch (language) {
 		case IGNORE:
 			return "Не переводить";
