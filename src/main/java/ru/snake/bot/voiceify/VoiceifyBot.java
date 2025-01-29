@@ -96,7 +96,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	// Message handlers
 
 	private void processMessage(final Context context, final String text) throws Exception {
-		readText(context, text);
+		readText(context.getChatId(), context.getMessageId(), text);
 	}
 
 	private void processMessageUrls(final Context context, final String text, final List<MessageEntity> linkEntities)
@@ -112,9 +112,9 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		}
 
 		if (linkEntities.size() == 1 && text.length() <= linkEntities.get(0).getLength()) {
-			readLinks(context, urlStrings);
+			readLinks(context.getChatId(), context.getMessageId(), urlStrings);
 		} else {
-			ChatState state = ChatState.create(text, urlStrings);
+			ChatState state = ChatState.create(context.getMessageId(), text, urlStrings);
 			database.setChatState(context.getChatId(), state);
 
 			sendMessage(context.getChatId(), Resource.asText("texts/message_links.txt"), massageTypeMenu());
@@ -163,13 +163,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		sendCallbackAnswer(queryId);
 
 		ChatState state = database.getChatState(context.getChatId());
-		readText(context, state.getText());
+		readText(context.getChatId(), context.getMessageId(), state.getText());
 	}
 
 	private void readAsLink(final Context context, final String queryId, final String command) throws Exception {
 		sendCallbackAnswer(queryId);
+
 		ChatState state = database.getChatState(context.getChatId());
-		readLinks(context, state.getUriStrings());
+		readLinks(context.getChatId(), context.getMessageId(), state.getUriStrings());
 	}
 
 	private void setLanguage(final Context context, final String queryId, final String command) throws Exception {
@@ -204,7 +205,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private ReplyKeyboard massageTypeMenu() {
 		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Прочитат текст").callbackData(CALLBACK_TEXT).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Прочитать текст").callbackData(CALLBACK_TEXT).build());
 		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить ссылки").callbackData(CALLBACK_LINK).build());
 		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
 
@@ -223,28 +224,28 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	// Utility functions
 
-	private void readText(final Context context, final String text)
+	private void readText(final long chatId, final int massageId, final String text)
 			throws IOException, InterruptedException, OllamaBaseException {
-		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
-		worker.sendText(context, text, language);
+		Language language = database.getLanguage(chatId, DEAFULT_LANGUAGE);
+		worker.sendText(chatId, massageId, text, language);
 
-		sendQueueStatus(context.getChatId());
+		sendQueueStatus(chatId);
 	}
 
-	private void readLinks(final Context context, final List<String> urlStrings) throws Exception {
-		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+	private void readLinks(final long chatId, final int massageId, final List<String> urlStrings) throws Exception {
+		Language language = database.getLanguage(chatId, DEAFULT_LANGUAGE);
 
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
 
 			if (DomainMatcher.match(host, settings.getVideoHosts())) {
-				worker.queueVideo(context, uri, language);
+				worker.queueVideo(chatId, massageId, uri, language);
 			} else {
-				worker.queueArticle(context, uri, language);
+				worker.queueArticle(chatId, massageId, uri, language);
 			}
 		}
 
-		sendQueueStatus(context.getChatId());
+		sendQueueStatus(chatId);
 	}
 
 	private void sendQueueStatus(long chatId) throws IOException {

@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.ollama4j.exceptions.OllamaBaseException;
-import ru.snake.bot.voiceify.consume.Context;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
@@ -81,24 +80,24 @@ public class Worker {
 		thread.start();
 	}
 
-	public void sendText(Context context, String text, Language language) throws InterruptedException {
+	public void sendText(long chatId, int messageId, String text, Language language) throws InterruptedException {
 		LOG.info("Queued text `{}`", text);
 
-		Job job = Job.text(context.getChatId(), context.getMessageId(), text, language);
+		Job job = Job.text(chatId, messageId, text, language);
 		queue.put(job);
 	}
 
-	public void queueArticle(Context context, String uri, Language language) throws InterruptedException {
+	public void queueArticle(long chatId, int messageId, String uri, Language language) throws InterruptedException {
 		LOG.info("Queued article: {}", uri);
 
-		Job job = Job.article(context.getChatId(), context.getMessageId(), uri, language);
+		Job job = Job.article(chatId, messageId, uri, language);
 		queue.put(job);
 	}
 
-	public void queueVideo(Context context, String uri, Language language) throws InterruptedException {
+	public void queueVideo(long chatId, int messageId, String uri, Language language) throws InterruptedException {
 		LOG.info("Queued video: {}", uri);
 
-		Job job = Job.video(context.getChatId(), context.getMessageId(), uri, language);
+		Job job = Job.video(chatId, messageId, uri, language);
 		queue.put(job);
 	}
 

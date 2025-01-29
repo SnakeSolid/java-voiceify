@@ -5,13 +5,20 @@ import java.util.List;
 
 public class ChatState {
 
+	private final int messageId;
+
 	private final String text;
 
 	private final List<String> uriStrings;
 
-	private ChatState(String text, List<String> uriStrings) {
+	private ChatState(int messageId, String text, List<String> uriStrings) {
+		this.messageId = messageId;
 		this.text = text;
 		this.uriStrings = uriStrings;
+	}
+
+	public int getMessageId() {
+		return messageId;
 	}
 
 	public String getText() {
@@ -24,15 +31,15 @@ public class ChatState {
 
 	@Override
 	public String toString() {
-		return "ChatState [text=" + text + ", uriStrings=" + uriStrings + "]";
+		return "ChatState [messageId=" + messageId + ", text=" + text + ", uriStrings=" + uriStrings + "]";
 	}
 
-	public static ChatState create(final String text, final List<String> uriStrings) {
-		return new ChatState(text, uriStrings);
+	public static ChatState create(final int messageId, final String text, final List<String> uriStrings) {
+		return new ChatState(messageId, text, uriStrings);
 	}
 
 	public static ChatState empty() {
-		return new ChatState("", Collections.emptyList());
+		return new ChatState(-1, "", Collections.emptyList());
 	}
 
 }

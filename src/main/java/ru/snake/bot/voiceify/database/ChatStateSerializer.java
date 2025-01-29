@@ -17,6 +17,7 @@ public class ChatStateSerializer extends GroupSerializerObjectArray<ChatState> {
 	public void serialize(DataOutput2 out, ChatState value) throws IOException {
 		List<String> uriStrings = value.getUriStrings();
 
+		out.writeInt(value.getMessageId());
 		out.writeUTF(value.getText());
 		out.writeInt(uriStrings.size());
 
@@ -27,6 +28,7 @@ public class ChatStateSerializer extends GroupSerializerObjectArray<ChatState> {
 
 	@Override
 	public ChatState deserialize(DataInput2 input, int available) throws IOException {
+		int messageId = input.readInt();
 		String text = input.readUTF();
 		List<String> uriStrings = new ArrayList<>();
 		int nUriStrings = input.readInt();
@@ -35,7 +37,7 @@ public class ChatStateSerializer extends GroupSerializerObjectArray<ChatState> {
 			uriStrings.add(input.readUTF());
 		}
 
-		return ChatState.create(text, uriStrings);
+		return ChatState.create(messageId, text, uriStrings);
 	}
 
 	@Override
