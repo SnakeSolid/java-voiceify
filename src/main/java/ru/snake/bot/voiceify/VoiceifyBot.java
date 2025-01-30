@@ -172,14 +172,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		sendCallbackAnswer(queryId);
 
 		ChatState state = database.getChatState(context.getChatId());
-		readText(context.getChatId(), context.getMessageId(), state.getText());
+		readText(context.getChatId(), state.getMessageId(), state.getText());
 	}
 
 	private void readAsLink(final Context context, final String queryId, final String command) throws Exception {
 		sendCallbackAnswer(queryId);
 
 		ChatState state = database.getChatState(context.getChatId());
-		readLinks(context.getChatId(), context.getMessageId(), state.getUriStrings());
+		readLinks(context.getChatId(), state.getMessageId(), state.getUriStrings());
 	}
 
 	private void setLanguage(final Context context, final String queryId, final String command) throws Exception {
