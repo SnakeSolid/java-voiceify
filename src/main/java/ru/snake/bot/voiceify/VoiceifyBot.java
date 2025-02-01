@@ -126,7 +126,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 			ChatState state = ChatState.create(context.getMessageId(), text, urlStrings);
 			database.setChatState(context.getChatId(), state);
 
-			sendMessage(context.getChatId(), Resource.asText("texts/message_links.txt"), massageTypeMenu());
+			sendMessage(context.getChatId(), Resource.asText("texts/message_links.txt"), messageTypeMenu());
 		}
 	}
 
@@ -212,7 +212,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	// Menu buttons
 
-	private ReplyKeyboard massageTypeMenu() {
+	private ReplyKeyboard messageTypeMenu() {
 		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
 		rowTwo.add(InlineKeyboardButton.builder().text("Прочитать текст").callbackData(CALLBACK_TEXT).build());
 		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить ссылки").callbackData(CALLBACK_LINK).build());
