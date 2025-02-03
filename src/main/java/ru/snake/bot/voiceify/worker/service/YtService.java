@@ -45,8 +45,13 @@ public class YtService {
 	public SubtitlesResult videoSubtitles(String uri) throws Exception {
 		LOG.info("Load subs for: {}", uri);
 
-		String title = ytDlp.title(uri);
 		List<SubtitleRow> allSubs = ytDlp.listSubs(uri);
+
+		if (allSubs.isEmpty()) {
+			throw new Exception("Subtitles/closed captions unavailable");
+		}
+
+		String title = ytDlp.title(uri);
 		SubtitleRow originalSubs = findBestSubs(allSubs);
 		File subsPath = ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3");
 		String text = removeFile(subsPath, this::subsToText);
