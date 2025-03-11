@@ -87,6 +87,10 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	public void sendVoiceMessage(final long chatId, final int messageId, final String caption, final File path) {
 		replyVoice(chatId, messageId, caption, path);
+
+		if (path.exists()) {
+			path.delete();
+		}
 	}
 
 	public void logError(final long chatId, final int messageId, final String uri, final String message)
