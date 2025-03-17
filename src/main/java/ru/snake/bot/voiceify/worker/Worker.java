@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import io.github.ollama4j.exceptions.OllamaBaseException;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
+import ru.snake.bot.voiceify.text.Escaper;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
@@ -138,7 +139,7 @@ public class Worker {
 			JobResult result = processor.process();
 
 			if (result.isSuccess()) {
-				callbackSuccess.call(job.getChatId(), job.getMessageId(), result.getCaption(), result.getSpeechPath());
+				callbackSuccess.call(job.getChatId(), job.getMessageId(), result.getText(), result.getSpeechPath());
 			} else {
 				callbackError.call(job.getChatId(), job.getMessageId(), job.getUri(), result.getMessage());
 			}
@@ -159,13 +160,9 @@ public class Worker {
 		String atricle = llmService.subsToArticle(resultSubtitles.getSubtitles());
 		String content = llmService.translateText(atricle, language);
 		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
+		String text = asLink(uri, resultSubtitles.getTitle());
 
-		return new JobResult(
-			resultTts.isSuccess(),
-			resultSubtitles.getTitle(),
-			resultTts.getSpeechPath(),
-			resultTts.getMessage()
-		);
+		return new JobResult(resultTts.isSuccess(), text, resultTts.getSpeechPath(), resultTts.getMessage());
 	}
 
 	private JobResult processArticle(String uri, Language language)
@@ -175,13 +172,9 @@ public class Worker {
 		ArticleResult resultArticle = webService.articleText(uri);
 		String content = llmService.translateText(resultArticle.getText(), language);
 		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
+		String text = asLink(uri, resultArticle.getTitle());
 
-		return new JobResult(
-			resultTts.isSuccess(),
-			resultArticle.getTitle(),
-			resultTts.getSpeechPath(),
-			resultTts.getMessage()
-		);
+		return new JobResult(resultTts.isSuccess(), text, resultTts.getSpeechPath(), resultTts.getMessage());
 	}
 
 	private JobResult processText(String text, Language language)
@@ -189,10 +182,16 @@ public class Worker {
 		LOG.info("Processing acticle `{}`", text);
 
 		String content = llmService.translateText(text, language);
-		String caption = llmService.writeCaption(content);
+		String caption = Escaper.escapeMarkdown(llmService.writeCaption(content));
 		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
 
 		return new JobResult(resultTts.isSuccess(), caption, resultTts.getSpeechPath(), resultTts.getMessage());
+	}
+
+	private String asLink(String uri, String caption) {
+		String escaped = Escaper.escapeMarkdown(caption);
+
+		return String.format("[%s](%s)", escaped, uri);
 	}
 
 	@Override

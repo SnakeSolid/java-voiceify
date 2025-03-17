@@ -85,8 +85,8 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		onAccessDenied(this::accessDenied);
 	}
 
-	public void sendVoiceMessage(final long chatId, final int messageId, final String caption, final File path) {
-		replyVoice(chatId, messageId, caption, path);
+	public void sendVoiceMessage(final long chatId, final int messageId, final String text, final File path) {
+		replyVoice(chatId, messageId, text, path);
 
 		if (path.exists()) {
 			path.delete();

@@ -51,7 +51,7 @@ public class BotClientConsumer extends UpdateConsumer implements LongPollingSing
 			.chatId(chatId)
 			.replyToMessageId(messageId)
 			.parseMode(ParseMode.MARKDOWNV2)
-			.caption(Escaper.escapeMarkdown(text))
+			.caption(text)
 			.voice(audioFile)
 			.build();
 
