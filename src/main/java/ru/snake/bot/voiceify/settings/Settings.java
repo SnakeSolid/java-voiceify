@@ -19,7 +19,11 @@ public class Settings {
 
 	private static final String YTDLP_PATH = "yt-dlp";
 
-	private final String ollamaUri;
+	private final Backend backend;
+
+	private final String baseUri;
+
+	private final String apiKey;
 
 	private final String modelName;
 
@@ -34,7 +38,9 @@ public class Settings {
 	private final String ytDlpPath;
 
 	private Settings(
-		final String ollamaUri,
+		final Backend backend,
+		final String baseUri,
+		final String apiKey,
 		final String modelName,
 		final int contextLength,
 		final long timeout,
@@ -42,7 +48,9 @@ public class Settings {
 		final List<String> videoHosts,
 		final CommandSettings ttsCommand
 	) {
-		this.ollamaUri = ollamaUri;
+		this.backend = backend;
+		this.baseUri = baseUri;
+		this.apiKey = apiKey;
 		this.modelName = modelName;
 		this.contextLength = contextLength;
 		this.timeout = timeout;
@@ -51,8 +59,16 @@ public class Settings {
 		this.ttsCommand = ttsCommand;
 	}
 
-	public String getOllamaUri() {
-		return ollamaUri;
+	public Backend getBackend() {
+		return backend;
+	}
+
+	public String getBaseUri() {
+		return baseUri;
+	}
+
+	public String getApiKey() {
+		return apiKey;
 	}
 
 	public String getModelName() {
@@ -81,9 +97,9 @@ public class Settings {
 
 	@Override
 	public String toString() {
-		return "Settings [ollamaUri=" + ollamaUri + ", modelName=" + modelName + ", contextLength=" + contextLength
-				+ ", timeout=" + timeout + ", videoHosts=" + videoHosts + ", ttsCommand=" + ttsCommand + ", ytDlpPath="
-				+ ytDlpPath + "]";
+		return "Settings [backend=" + backend + ", baseUri=" + baseUri + ", apiKey=" + apiKey + ", modelName="
+				+ modelName + ", contextLength=" + contextLength + ", timeout=" + timeout + ", videoHosts=" + videoHosts
+				+ ", ttsCommand=" + ttsCommand + ", ytDlpPath=" + ytDlpPath + "]";
 	}
 
 	public static Settings fromFile(final File configuration) throws ConfigurateException {
@@ -93,7 +109,9 @@ public class Settings {
 		List<String> videoHosts = root.node("hosts", "video").getList(String.class);
 
 		return new Settings(
-			root.node("ollama_uri").getString(DEFAULT_URI),
+			root.node("backend").get(Backend.class),
+			root.node("base_uri").getString(DEFAULT_URI),
+			root.node("api_key").getString(),
 			root.node("model_name").getString(MODEL_NAME),
 			root.node("context_length").getInt(CONTEXT_LENGTH),
 			root.node("timeout").getLong(DEFAULT_TIMEOUT),

@@ -11,6 +11,7 @@
 		<picocli.version>4.7.6</picocli.version>
 		<configurate.version>4.1.2</configurate.version>
 		<ollama.version>1.0.91</ollama.version>
+		<openai.version>0.41.0</openai.version>
 		<mapdb.version>3.1.0</mapdb.version>
 		<readability.version>1.0.8</readability.version>
 		<jsoup.version>1.18.3</jsoup.version>
@@ -45,6 +46,11 @@
 			<groupId>io.github.ollama4j</groupId>
 			<artifactId>ollama4j</artifactId>
 			<version>${ollama.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.openai</groupId>
+			<artifactId>openai-java</artifactId>
+			<version>${openai.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mapdb</groupId>

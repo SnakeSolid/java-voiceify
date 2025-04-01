@@ -44,8 +44,9 @@ changed using the configuration file (option `--config`).
 Example of configuration file with default settings:
 
 ```
-uri     = "http://localhost:11434/"
-model   = "gemma2"
+backend = OpenAi # Or `Ollama` for ollama backend
+base_uri = "http://127.0.0.1:1234/v1/"
+model_name = "yandexgpt-5-lite-8b-instruct"
 timeout = 120
 ```
 

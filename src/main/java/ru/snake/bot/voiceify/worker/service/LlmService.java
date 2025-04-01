@@ -7,37 +7,33 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.github.ollama4j.OllamaAPI;
 import io.github.ollama4j.exceptions.OllamaBaseException;
-import io.github.ollama4j.models.chat.OllamaChatMessageRole;
-import io.github.ollama4j.models.chat.OllamaChatRequest;
-import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
-import io.github.ollama4j.models.chat.OllamaChatResult;
 import ru.snake.bot.voiceify.Resource;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.util.SentenceIterator;
 import ru.snake.bot.voiceify.worker.Translation;
+import ru.snake.bot.voiceify.worker.backend.LlmBackend;
+import ru.snake.bot.voiceify.worker.backend.LlmBackendException;
 
 public class LlmService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(LlmService.class);
 
-	private final OllamaAPI ollamaApi;
+	private final LlmBackend backend;
 
 	private final String modelName;
 
 	private final int contextLength;
 
-	public LlmService(final OllamaAPI ollamaApi, final String modelName, final int contextLength) {
-		this.ollamaApi = ollamaApi;
+	public LlmService(final LlmBackend backend, final String modelName, final int contextLength) {
+		this.backend = backend;
 		this.modelName = modelName;
 		this.contextLength = contextLength;
 	}
 
-	public String translateText(String text, Language language)
-			throws OllamaBaseException, IOException, InterruptedException {
+	public String translateText(String text, Language language) throws IOException, LlmBackendException {
 		if (!Translation.isNeedTranslation(text, language)) {
 			return text;
 		}
@@ -68,7 +64,7 @@ public class LlmService {
 		return result.toString();
 	}
 
-	public String writeCaption(String text) throws OllamaBaseException, IOException, InterruptedException {
+	public String writeCaption(String text) throws LlmBackendException, IOException {
 		LOG.info("Write caption for `{}`", text);
 
 		String caption = textQuery(Replacer.replace(Resource.asText("prompts/text_caption.txt"), Map.of("text", text)));
@@ -76,7 +72,7 @@ public class LlmService {
 		return caption;
 	}
 
-	public String subsToArticle(String text) throws IOException, OllamaBaseException, InterruptedException {
+	public String subsToArticle(String text) throws IOException, LlmBackendException {
 		LOG.info("Convert subs to text: `{}`", text);
 
 		String prompt = Resource.asText("prompts/text_to_article.txt");
@@ -110,20 +106,12 @@ public class LlmService {
 		}
 	}
 
-	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
+	private String textQuery(String... messages) throws LlmBackendException {
 		if (LOG.isInfoEnabled()) {
 			LOG.info("Execute text query: {}", Arrays.asList(messages));
 		}
 
-		OllamaChatRequestBuilder builder = OllamaChatRequestBuilder.getInstance(modelName);
-
-		for (String message : messages) {
-			builder.withMessage(OllamaChatMessageRole.USER, message);
-		}
-
-		OllamaChatRequest request = builder.build();
-		OllamaChatResult chat = ollamaApi.chat(request);
-		String result = chat.getResponseModel().getMessage().getContent();
+		String result = backend.chat(modelName, messages);
 
 		LOG.info("Query result: {}", result);
 
@@ -132,16 +120,11 @@ public class LlmService {
 
 	@Override
 	public String toString() {
-		return "LlmService [ollamaApi=" + ollamaApi + ", modelName=" + modelName + ", contextLength=" + contextLength
-				+ "]";
+		return "LlmService [backend=" + backend + ", modelName=" + modelName + ", contextLength=" + contextLength + "]";
 	}
 
 	public static LlmService create(Settings settings) {
-		OllamaAPI ollamaApi = new OllamaAPI(settings.getOllamaUri());
-		ollamaApi.setRequestTimeoutSeconds(settings.getTimeout());
-		ollamaApi.setVerbose(false);
-
-		return new LlmService(ollamaApi, settings.getModelName(), settings.getContextLength());
+		return new LlmService(LlmBackend.from(settings), settings.getModelName(), settings.getContextLength());
 	}
 
 }

@@ -13,6 +13,7 @@ import io.github.ollama4j.exceptions.OllamaBaseException;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Escaper;
+import ru.snake.bot.voiceify.worker.backend.LlmBackendException;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
@@ -166,7 +167,7 @@ public class Worker {
 	}
 
 	private JobResult processArticle(String uri, Language language)
-			throws IOException, OllamaBaseException, InterruptedException {
+			throws IOException, LlmBackendException, InterruptedException {
 		LOG.info("Processing acticle: {}", uri);
 
 		ArticleResult resultArticle = webService.articleText(uri);
@@ -178,7 +179,7 @@ public class Worker {
 	}
 
 	private JobResult processText(String text, Language language)
-			throws OllamaBaseException, IOException, InterruptedException {
+			throws IOException, LlmBackendException, InterruptedException {
 		LOG.info("Processing acticle `{}`", text);
 
 		String content = llmService.translateText(text, language);
