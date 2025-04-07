@@ -7,11 +7,14 @@ import org.mapdb.Serializer;
 
 public class MapDBDatabase implements Database {
 
+	private final DB db;
+
 	private final Map<Long, Language> languages;
 
 	private final Map<Long, ChatState> chatStates;
 
-	private MapDBDatabase(final Map<Long, Language> languages, final Map<Long, ChatState> chatStates) {
+	private MapDBDatabase(final DB db, final Map<Long, Language> languages, final Map<Long, ChatState> chatStates) {
+		this.db = db;
 		this.languages = languages;
 		this.chatStates = chatStates;
 	}
@@ -19,6 +22,7 @@ public class MapDBDatabase implements Database {
 	@Override
 	public void setLanguage(long chatId, Language language) {
 		languages.put(chatId, language);
+		db.commit();
 	}
 
 	@Override
@@ -29,6 +33,7 @@ public class MapDBDatabase implements Database {
 	@Override
 	public void setChatState(long chatId, ChatState state) {
 		chatStates.put(chatId, state);
+		db.commit();
 	}
 
 	@Override
@@ -38,7 +43,7 @@ public class MapDBDatabase implements Database {
 
 	@Override
 	public String toString() {
-		return "MapDBDatabase [languages=" + languages + ", chatStates=" + chatStates + "]";
+		return "MapDBDatabase [db=" + db + ", languages=" + languages + ", chatStates=" + chatStates + "]";
 	}
 
 	public static Database from(DB db) {
@@ -47,7 +52,7 @@ public class MapDBDatabase implements Database {
 		Map<Long, ChatState> chatStates = db.hashMap("chatStates", Serializer.LONG, ChatStateSerializer.instance())
 			.createOrOpen();
 
-		return new MapDBDatabase(languages, chatStates);
+		return new MapDBDatabase(db, languages, chatStates);
 	}
 
 }
