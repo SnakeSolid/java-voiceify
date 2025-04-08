@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.EntityType;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -23,6 +24,7 @@ import ru.snake.bot.voiceify.consume.callback.AccessDeniedAction;
 import ru.snake.bot.voiceify.consume.callback.Callback;
 import ru.snake.bot.voiceify.consume.callback.CallbackAction;
 import ru.snake.bot.voiceify.consume.callback.CommandAction;
+import ru.snake.bot.voiceify.consume.callback.DocumentAction;
 import ru.snake.bot.voiceify.consume.callback.MessageAction;
 import ru.snake.bot.voiceify.consume.callback.MessageUrlAction;
 
@@ -44,6 +46,8 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private MessageAction messageAction;
 
+	private DocumentAction documentAction;
+
 	private AccessDeniedAction accessDeniedAction;
 
 	public UpdateConsumer(final Set<Long> whiteList) {
@@ -53,6 +57,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		this.unknownCommand = null;
 		this.unknownCallback = null;
 		this.messageAction = null;
+		this.documentAction = null;
 		this.accessDeniedAction = null;
 	}
 
@@ -82,6 +87,12 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	public UpdateConsumer onMessage(final MessageAction callback) {
 		messageAction = callback;
+
+		return this;
+	}
+
+	public UpdateConsumer onDocument(final DocumentAction callback) {
+		documentAction = callback;
 
 		return this;
 	}
@@ -156,6 +167,7 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 		List<MessageEntity> linkEntities = getLinks(entities);
 		List<MessageEntity> botCommands = getBotCommands(entities);
 		String text = get(message, Message::hasText, Message::getText);
+		Document document = get(message, Message::hasDocument, Message::getDocument);
 
 		if (!linkEntities.isEmpty() && text != null) {
 			consume(messageUrlAction, action -> action.consume(context, text, linkEntities));
@@ -168,6 +180,8 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 					command -> command.consume(context, botCommand)
 				);
 			}
+		} else if (document != null) {
+			consume(documentAction, action -> action.consume(context, document.getFileId(), document.getMimeType()));
 		} else if (text != null) {
 			consume(messageAction, action -> action.consume(context, text));
 		}
@@ -234,8 +248,8 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 	public String toString() {
 		return "UpdateConsumer [whiteList=" + whiteList + ", commands=" + commands + ", callbacks=" + callbacks
 				+ ", unknownCommand=" + unknownCommand + ", unknownCallback=" + unknownCallback + ", messageUrlAction="
-				+ messageUrlAction + ", messageAction=" + messageAction + ", accessDeniedAction=" + accessDeniedAction
-				+ "]";
+				+ messageUrlAction + ", messageAction=" + messageAction + ", documentAction=" + documentAction
+				+ ", accessDeniedAction=" + accessDeniedAction + "]";
 	}
 
 }

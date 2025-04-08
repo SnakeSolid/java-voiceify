@@ -66,6 +66,10 @@ public class Job {
 		return new Job(JobType.TEXT, chatId, messageId, null, text, language);
 	}
 
+	public static Job subtitles(long chatId, int messageId, String text, Language language) {
+		return new Job(JobType.SUBTITLES, chatId, messageId, null, text, language);
+	}
+
 	public static Job article(long chatId, int messageId, String uri, Language language) {
 		return new Job(JobType.ARTICLE, chatId, messageId, uri, null, language);
 	}

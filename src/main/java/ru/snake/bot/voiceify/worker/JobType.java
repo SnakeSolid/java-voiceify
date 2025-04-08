@@ -8,6 +8,11 @@ public enum JobType {
 	TEXT,
 
 	/**
+	 * Read text as subtitles (fix text style and remove sounds).
+	 */
+	SUBTITLES,
+
+	/**
 	 * Read article by URI.
 	 */
 	ARTICLE,

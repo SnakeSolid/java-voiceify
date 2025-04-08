@@ -13,6 +13,7 @@ import io.github.ollama4j.exceptions.OllamaBaseException;
 import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Escaper;
+import ru.snake.bot.voiceify.util.TextUtil;
 import ru.snake.bot.voiceify.worker.backend.LlmBackendException;
 import ru.snake.bot.voiceify.worker.data.ArticleResult;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
@@ -83,9 +84,16 @@ public class Worker {
 	}
 
 	public void sendText(long chatId, int messageId, String text, Language language) throws InterruptedException {
-		LOG.info("Queued text `{}`", text);
+		LOG.info("Queued text: {}", TextUtil.trimText(text, 256));
 
 		Job job = Job.text(chatId, messageId, text, language);
+		queue.put(job);
+	}
+
+	public void queueSubtitles(long chatId, int messageId, String text, Language language) throws InterruptedException {
+		LOG.info("Queued subtitles: {}", TextUtil.trimText(text, 256));
+
+		Job job = Job.subtitles(chatId, messageId, text, language);
 		queue.put(job);
 	}
 
@@ -120,6 +128,10 @@ public class Worker {
 			switch (job.getType()) {
 			case TEXT:
 				sendResult(job, () -> processText(job.getText(), language));
+				break;
+
+			case SUBTITLES:
+				sendResult(job, () -> processSubtitles(job.getText(), language));
 				break;
 
 			case ARTICLE:
@@ -178,9 +190,21 @@ public class Worker {
 		return new JobResult(resultTts.isSuccess(), text, resultTts.getSpeechPath(), resultTts.getMessage());
 	}
 
+	private JobResult processSubtitles(String text, Language language)
+			throws Exception, IOException, OllamaBaseException, InterruptedException {
+		LOG.info("Processing subtitles: {}", TextUtil.trimText(text, 256));
+
+		String atricle = llmService.subsToArticle(text);
+		String content = llmService.translateText(atricle, language);
+		String caption = Escaper.escapeMarkdown(llmService.writeCaption(content));
+		TextToSpeechResult resultTts = ttsService.textToSpeech(content);
+
+		return new JobResult(resultTts.isSuccess(), caption, resultTts.getSpeechPath(), resultTts.getMessage());
+	}
+
 	private JobResult processText(String text, Language language)
 			throws IOException, LlmBackendException, InterruptedException {
-		LOG.info("Processing acticle `{}`", text);
+		LOG.info("Processing text `{}`", TextUtil.trimText(text, 256));
 
 		String content = llmService.translateText(text, language);
 		String caption = Escaper.escapeMarkdown(llmService.writeCaption(content));

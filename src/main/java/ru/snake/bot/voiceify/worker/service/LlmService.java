@@ -12,6 +12,7 @@ import ru.snake.bot.voiceify.database.Language;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.util.SentenceIterator;
+import ru.snake.bot.voiceify.util.TextUtil;
 import ru.snake.bot.voiceify.worker.Translation;
 import ru.snake.bot.voiceify.worker.backend.LlmBackend;
 import ru.snake.bot.voiceify.worker.backend.LlmBackendException;
@@ -64,11 +65,13 @@ public class LlmService {
 	}
 
 	public String writeCaption(String text) throws LlmBackendException, IOException {
-		LOG.info("Write caption for `{}`", text);
+		LOG.info("Write caption for `{}`", TextUtil.trimText(text, 256));
 
-		String caption = textQuery(Replacer.replace(Resource.asText("prompts/text_caption.txt"), Map.of("text", text)));
+		String message = Resource.asText("prompts/text_caption.txt");
+		String head = TextUtil.trimText(text, contextLength - message.length());
+		String caption = textQuery(Replacer.replace(message, Map.of("text", head)));
 
-		return caption;
+		return TextUtil.unquoteText(caption);
 	}
 
 	public String subsToArticle(String text) throws IOException, LlmBackendException {

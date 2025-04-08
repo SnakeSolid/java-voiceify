@@ -1,7 +1,5 @@
 package ru.snake.bot.voiceify.consume.callback;
 
-import java.util.List;
-
 import ru.snake.bot.voiceify.consume.Context;
 
 @FunctionalInterface
