@@ -262,7 +262,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private ReplyKeyboard messageStyleMenu() {
 		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить текст").callbackData(CALLBACK_LINK).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить текст").callbackData(CALLBACK_TEXT).build());
 		rowTwo.add(InlineKeyboardButton.builder().text("Озвучить субтитры").callbackData(CALLBACK_SUBS).build());
 		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
 
