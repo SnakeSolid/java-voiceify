@@ -138,7 +138,7 @@ public class YtDlp {
 		String stdout = stdOutProcessor.getBuffer().toString();
 		String stderr = stdErrProcessor.getBuffer().toString();
 
-		if (exitCode > 0) {
+		if (exitCode > 0 && stdout.isEmpty()) {
 			throw new YtDlpException(stderr);
 		}
 
