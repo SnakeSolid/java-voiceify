@@ -1,36 +1,37 @@
 package ru.snake.bot.voiceify.ytdlp;
 
-/** YtDlp Exception */
 public class YtDlpException extends Exception {
 
-  /** Exception message */
-  private String message;
+	private static final long serialVersionUID = -164962716154629321L;
 
-  /**
-   * Construct YtDlpException with a message
-   *
-   * @param message
-   */
-  public YtDlpException(String message) {
-    this.message = message;
-  }
+	private String message;
 
-  /**
-   * Construct YtDlpException from another exception
-   *
-   * @param e Any exception
-   */
-  public YtDlpException(Exception e) {
-    message = e.getMessage();
-  }
+	/**
+	 * Construct YtDlpException with a message
+	 *
+	 * @param message
+	 */
+	public YtDlpException(String message) {
+		this.message = message;
+	}
 
-  /**
-   * Get exception message
-   *
-   * @return exception message
-   */
-  @Override
-  public String getMessage() {
-    return message;
-  }
+	/**
+	 * Construct YtDlpException from another exception
+	 *
+	 * @param e
+	 *            Any exception
+	 */
+	public YtDlpException(Exception e) {
+		message = e.getMessage();
+	}
+
+	/**
+	 * Get exception message
+	 *
+	 * @return exception message
+	 */
+	@Override
+	public String getMessage() {
+		return message;
+	}
 }
