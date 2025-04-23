@@ -5,7 +5,7 @@ import java.util.Set;
 public class Escaper {
 
 	private static final Set<Character> ESCAPE_CHARACTERS = Set
-		.of('_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!');
+		.of('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!');
 
 	public static String escapeMarkdown(final String value) {
 		StringBuilder builder = new StringBuilder();
