@@ -75,7 +75,7 @@ public class LlmService {
 	}
 
 	public String subsToArticle(String text) throws IOException, LlmBackendException {
-		LOG.info("Convert subs to text: `{}`", text);
+		LOG.info("Convert subs to text: `{}`", TextUtil.trimText(text, 256));
 
 		String prompt = Resource.asText("prompts/text_to_article.txt");
 

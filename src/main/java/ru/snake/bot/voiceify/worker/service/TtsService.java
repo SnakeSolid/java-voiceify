@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import ru.snake.bot.voiceify.settings.CommandSettings;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
+import ru.snake.bot.voiceify.util.TextUtil;
 import ru.snake.bot.voiceify.worker.Translation;
 import ru.snake.bot.voiceify.worker.data.TextToSpeechResult;
 
@@ -30,7 +31,7 @@ public class TtsService {
 	}
 
 	public TextToSpeechResult textToSpeech(String text) throws IOException, InterruptedException {
-		LOG.info("Synthesizing voice for `{}`", text);
+		LOG.info("Synthesizing voice for `{}`", TextUtil.trimText(text, 256));
 
 		File tempDirectory = new File(cacheDirectory, "temp");
 		File outputPath = new File(cacheDirectory, "output.mp3");
