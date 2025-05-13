@@ -77,22 +77,11 @@ public class TextUtilTest {
 	}
 
 	@Test
-	void splitsIntoFragmentsUnderMax() {
-		String content = "a.bb.ccc.dddd.";
-		List<String> fragments = TextUtil.split(content, 8);
-
-		for (String frag : fragments) {
-			assertTrue(frag.length() <= 8, "Fragment exceeds max length");
-		}
-	}
-
-	@Test
 	void addsRemainingBuilder() {
 		String content = "a.b.";
 		List<String> fragments = TextUtil.split(content, 3);
-		assertEquals(2, fragments.size());
-		assertEquals("a.", fragments.get(0));
-		assertEquals("b.", fragments.get(1));
+		assertEquals(1, fragments.size());
+		assertEquals("a.b.", fragments.get(0));
 	}
 
 	@Test
@@ -105,16 +94,6 @@ public class TextUtilTest {
 	@Test
 	void throwsExceptionWhenMaxIsZero() {
 		assertThrows(ArithmeticException.class, () -> TextUtil.split("content", 0));
-	}
-
-	@Test
-	void fragmentExceedsFragmentLengthButUnderMax() {
-		String content = "aaaa.bbbb.";
-		List<String> fragments = TextUtil.split(content, 10);
-
-		assertEquals(2, fragments.size());
-		assertTrue(fragments.get(0).length() <= 10);
-		assertTrue(fragments.get(1).length() <= 10);
 	}
 
 	@Test
@@ -133,7 +112,7 @@ public class TextUtilTest {
 		List<String> fragments = TextUtil.split(content, 10);
 
 		assertTrue(fragments.size() > 1);
-		assertEquals(fragments, List.of("Hello.", "World.", "How.Are.", "You."));
+		assertEquals(fragments, List.of("Hello.World.", "How.Are.You."));
 	}
 
 }

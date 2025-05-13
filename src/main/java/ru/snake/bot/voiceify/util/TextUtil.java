@@ -50,13 +50,13 @@ public class TextUtil {
 			return Collections.singletonList(content);
 		}
 
-		int nFragments = (content.length() + maxFragmentChars) / maxFragmentChars;
+		int nFragments = (content.length() + maxFragmentChars - 1) / maxFragmentChars;
 		int fragmentLength = content.length() / nFragments;
 		List<String> result = new ArrayList<>();
 		StringBuilder builder = new StringBuilder();
 
 		for (String sentence : new SentenceIterator(content)) {
-			if (builder.length() > 0 && builder.length() + sentence.length() > fragmentLength) {
+			if (builder.length() > fragmentLength) {
 				result.add(builder.toString());
 				builder.setLength(0);
 			}
