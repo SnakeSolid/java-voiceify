@@ -243,9 +243,10 @@ public class Worker {
 			return caption;
 		}
 
-		String text = String.format("%s (часть %d/%d)", caption, fragmenIndex + 1, nFragments);
+		String partFormat = Escaper.escapeMarkdown("%s (часть %d/%d)");
+		String text = String.format(partFormat, caption, fragmenIndex + 1, nFragments);
 
-		return Escaper.escapeMarkdown(text);
+		return text;
 	}
 
 	private String asLink(String uri, String caption) {
