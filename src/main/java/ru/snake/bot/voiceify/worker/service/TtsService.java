@@ -34,7 +34,7 @@ public class TtsService {
 		LOG.info("Synthesizing voice for `{}`", TextUtil.trimText(text, 256));
 
 		File tempDirectory = new File(cacheDirectory, "temp");
-		File outputPath = new File(cacheDirectory, "output.mp3");
+		File outputPath = File.createTempFile("output-", ".mp3", cacheDirectory);
 
 		if (outputPath.exists()) {
 			outputPath.delete();

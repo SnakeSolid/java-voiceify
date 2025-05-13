@@ -31,6 +31,8 @@ public class Settings {
 
 	private final long timeout;
 
+	private final int maxFragmentChars;
+
 	private final List<String> videoHosts;
 
 	private final CommandSettings ttsCommand;
@@ -44,6 +46,7 @@ public class Settings {
 		final String modelName,
 		final int contextLength,
 		final long timeout,
+		final int maxFragmentChars,
 		final String ytDlpPath,
 		final List<String> videoHosts,
 		final CommandSettings ttsCommand
@@ -54,6 +57,7 @@ public class Settings {
 		this.modelName = modelName;
 		this.contextLength = contextLength;
 		this.timeout = timeout;
+		this.maxFragmentChars = maxFragmentChars;
 		this.ytDlpPath = ytDlpPath;
 		this.videoHosts = videoHosts;
 		this.ttsCommand = ttsCommand;
@@ -83,6 +87,10 @@ public class Settings {
 		return timeout;
 	}
 
+	public int getMaxFragmentChars() {
+		return maxFragmentChars;
+	}
+
 	public String getYtDlpPath() {
 		return ytDlpPath;
 	}
@@ -98,8 +106,9 @@ public class Settings {
 	@Override
 	public String toString() {
 		return "Settings [backend=" + backend + ", baseUri=" + baseUri + ", apiKey=" + apiKey + ", modelName="
-				+ modelName + ", contextLength=" + contextLength + ", timeout=" + timeout + ", videoHosts=" + videoHosts
-				+ ", ttsCommand=" + ttsCommand + ", ytDlpPath=" + ytDlpPath + "]";
+				+ modelName + ", contextLength=" + contextLength + ", timeout=" + timeout + ", maxFragmentChars="
+				+ maxFragmentChars + ", videoHosts=" + videoHosts + ", ttsCommand=" + ttsCommand + ", ytDlpPath="
+				+ ytDlpPath + "]";
 	}
 
 	public static Settings fromFile(final File configuration) throws ConfigurateException {
@@ -115,6 +124,7 @@ public class Settings {
 			root.node("model_name").getString(MODEL_NAME),
 			root.node("context_length").getInt(CONTEXT_LENGTH),
 			root.node("timeout").getLong(DEFAULT_TIMEOUT),
+			root.node("max_fragment_chars").getInt(Integer.MAX_VALUE),
 			PathUtil.absolutePath(root.node("ytdlp").getString(YTDLP_PATH)),
 			videoHosts,
 			ttsCommand

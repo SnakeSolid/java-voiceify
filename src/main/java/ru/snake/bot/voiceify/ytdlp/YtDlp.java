@@ -96,7 +96,6 @@ public class YtDlp {
 			if (line.startsWith(DESTINATION)) {
 				String filename = line.substring(DESTINATION.length()).trim();
 				File result = new File(workingDirectory, filename);
-				result.deleteOnExit();
 
 				return result;
 			}

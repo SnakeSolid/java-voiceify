@@ -49,6 +49,7 @@ backend = OpenAi # Or `Ollama` for ollama backend
 base_uri = "http://127.0.0.1:1234/v1/"
 model_name = "yandexgpt-5-lite-8b-instruct"
 timeout = 120
+max_fragment_chars = 100000 # Required to avoid Telegram limit 50Mb per file. Depends on TTS service and sound quality.
 ```
 
 ## License
