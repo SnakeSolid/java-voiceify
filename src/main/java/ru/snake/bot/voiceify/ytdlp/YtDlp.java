@@ -19,8 +19,6 @@ public class YtDlp {
 
 	private static final String DESTINATION = "[download] Destination: ";
 
-	private static final String WRITING = "[info] Writing video subtitles to: ";
-
 	private final String executablePath;
 
 	private final File workingDirectory;
@@ -88,6 +86,7 @@ public class YtDlp {
 		request.setOption("write-auto-subs");
 		request.setOption("sub-langs", language);
 		request.setOption("sub-format", format);
+		request.setOption("id");
 		request.setOption("skip-download");
 		request.setOption("retries", 3);
 
@@ -97,11 +96,6 @@ public class YtDlp {
 		for (String line : new SentenceIterator(stdout, '\n')) {
 			if (line.startsWith(DESTINATION)) {
 				String filename = line.substring(DESTINATION.length()).trim();
-				File result = new File(workingDirectory, filename);
-
-				return result;
-			} else if (line.startsWith(WRITING)) {
-				String filename = line.substring(WRITING.length()).trim();
 				File result = new File(workingDirectory, filename);
 
 				return result;
