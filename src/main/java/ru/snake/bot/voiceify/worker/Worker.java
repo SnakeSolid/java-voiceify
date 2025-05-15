@@ -183,6 +183,15 @@ public class Worker {
 		LOG.info("Processing video: {}", uri);
 
 		SubtitlesResult resultSubtitles = ytService.videoSubtitles(uri);
+
+		if (!resultSubtitles.isSuccess()) {
+			JobResult result = new JobResult(false, null, null, "Failed to featch video subtitles.");
+
+			callback.accept(result);
+
+			return;
+		}
+
 		String atricle = llmService.subsToArticle(resultSubtitles.getSubtitles());
 		String content = llmService.translateText(atricle, language);
 		String text = asLink(uri, resultSubtitles.getTitle());

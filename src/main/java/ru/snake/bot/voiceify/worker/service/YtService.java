@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ru.snake.bot.voiceify.settings.Settings;
+import ru.snake.bot.voiceify.util.Retry;
 import ru.snake.bot.voiceify.worker.FileCallback;
 import ru.snake.bot.voiceify.worker.data.SubtitlesResult;
 import ru.snake.bot.voiceify.ytdlp.YtDlp;
@@ -53,10 +54,18 @@ public class YtService {
 
 		String title = ytDlp.title(uri);
 		SubtitleRow originalSubs = findBestSubs(allSubs);
-		File subsPath = ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3");
+
+		// Sometimes yt-dlp does not save subtitles to file.
+		// Try to retry download 3 times before continue.
+		File subsPath = Retry.times(() -> ytDlp.loadSubs(uri, originalSubs.getLanguage(), "json3"), f -> f != null, 3);
+
+		if (subsPath == null) {
+			return SubtitlesResult.fail();
+		}
+
 		String text = removeFile(subsPath, this::subsToText);
 
-		return new SubtitlesResult(title, text);
+		return SubtitlesResult.success(title, text);
 	}
 
 	private String subsToText(File subsPath) throws IOException {
