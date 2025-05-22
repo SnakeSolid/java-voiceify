@@ -25,8 +25,10 @@ public class TextUtil {
 	public static String trimText(String text, int maxLength) {
 		if (text.length() < maxLength) {
 			return text;
+		} else if (maxLength <= 3) {
+			return text.substring(0, maxLength);
 		} else {
-			return text.substring(0, maxLength) + "...";
+			return text.substring(0, maxLength - 3) + "...";
 		}
 	}
 

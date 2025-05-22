@@ -23,7 +23,15 @@ public class TextUtilTest {
 		String longText = "This is a longer text that needs to be trimmed.";
 		int maxLength = 10;
 
-		assertEquals("This is a ...", TextUtil.trimText(longText, maxLength));
+		assertEquals("This is...", TextUtil.trimText(longText, maxLength));
+	}
+
+	@Test
+	public void testTrimText_TwoChars() {
+		String longText = "Lorem ipsum.";
+		int maxLength = 2;
+
+		assertEquals("Lo", TextUtil.trimText(longText, maxLength));
 	}
 
 	@Test
