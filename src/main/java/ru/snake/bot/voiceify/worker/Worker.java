@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ru.snake.bot.voiceify.database.Language;
+import ru.snake.bot.voiceify.database.UserSettings;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Escaper;
 import ru.snake.bot.voiceify.util.TextUtil;
@@ -86,31 +86,33 @@ public class Worker {
 		thread.start();
 	}
 
-	public void sendText(long chatId, int messageId, String text, Language language) throws InterruptedException {
+	public void sendText(long chatId, int messageId, String text, UserSettings settings) throws InterruptedException {
 		LOG.info("Queued text: {}", TextUtil.trimText(text, 256));
 
-		Job job = Job.text(chatId, messageId, text, language);
+		Job job = Job.text(chatId, messageId, text, settings);
 		queue.put(job);
 	}
 
-	public void queueSubtitles(long chatId, int messageId, String text, Language language) throws InterruptedException {
+	public void queueSubtitles(long chatId, int messageId, String text, UserSettings settings)
+			throws InterruptedException {
 		LOG.info("Queued subtitles: {}", TextUtil.trimText(text, 256));
 
-		Job job = Job.subtitles(chatId, messageId, text, language);
+		Job job = Job.subtitles(chatId, messageId, text, settings);
 		queue.put(job);
 	}
 
-	public void queueArticle(long chatId, int messageId, String uri, Language language) throws InterruptedException {
+	public void queueArticle(long chatId, int messageId, String uri, UserSettings settings)
+			throws InterruptedException {
 		LOG.info("Queued article: {}", uri);
 
-		Job job = Job.article(chatId, messageId, uri, language);
+		Job job = Job.article(chatId, messageId, uri, settings);
 		queue.put(job);
 	}
 
-	public void queueVideo(long chatId, int messageId, String uri, Language language) throws InterruptedException {
+	public void queueVideo(long chatId, int messageId, String uri, UserSettings settings) throws InterruptedException {
 		LOG.info("Queued video: {}", uri);
 
-		Job job = Job.video(chatId, messageId, uri, language);
+		Job job = Job.video(chatId, messageId, uri, settings);
 		queue.put(job);
 	}
 
@@ -126,23 +128,23 @@ public class Worker {
 				break;
 			}
 
-			Language language = job.getLanguage();
+			UserSettings settings = job.getSettings();
 
 			switch (job.getType()) {
 			case TEXT:
-				executeSafe(job, () -> processText(job.getText(), language, r -> sendResult(job, r)));
+				executeSafe(job, () -> processText(job.getText(), settings, r -> sendResult(job, r)));
 				break;
 
 			case SUBTITLES:
-				executeSafe(job, () -> processSubtitles(job.getText(), language, r -> sendResult(job, r)));
+				executeSafe(job, () -> processSubtitles(job.getText(), settings, r -> sendResult(job, r)));
 				break;
 
 			case ARTICLE:
-				executeSafe(job, () -> processArticle(job.getUri(), language, r -> sendResult(job, r)));
+				executeSafe(job, () -> processArticle(job.getUri(), settings, r -> sendResult(job, r)));
 				break;
 
 			case VIDEO:
-				executeSafe(job, () -> processVideo(job.getUri(), language, r -> sendResult(job, r)));
+				executeSafe(job, () -> processVideo(job.getUri(), settings, r -> sendResult(job, r)));
 				break;
 
 			default:
@@ -179,7 +181,7 @@ public class Worker {
 		}
 	}
 
-	private void processVideo(String uri, Language language, Consumer<JobResult> callback) throws Exception {
+	private void processVideo(String uri, UserSettings settings, Consumer<JobResult> callback) throws Exception {
 		LOG.info("Processing video: {}", uri);
 
 		SubtitlesResult resultSubtitles = ytService.videoSubtitles(uri);
@@ -192,37 +194,42 @@ public class Worker {
 			return;
 		}
 
-		String atricle = llmService.subsToArticle(resultSubtitles.getSubtitles());
-		String content = llmService.translateText(atricle, language);
+		String article = llmService.subsToArticle(resultSubtitles.getSubtitles());
+		String shorten = settings.isShorten() ? llmService.shortenArticle(article) : article;
+		String content = llmService.translateText(shorten, settings.getLanguage());
 		String text = asLink(uri, resultSubtitles.getTitle());
 
 		contentToSpeech(content, text, callback);
 	}
 
-	private void processArticle(String uri, Language language, Consumer<JobResult> callback) throws Exception {
+	private void processArticle(String uri, UserSettings settings, Consumer<JobResult> callback) throws Exception {
 		LOG.info("Processing acticle: {}", uri);
 
 		ArticleResult resultArticle = webService.articleText(uri);
-		String content = llmService.translateText(resultArticle.getText(), language);
+		String article = resultArticle.getText();
+		String shorten = settings.isShorten() ? llmService.shortenArticle(article) : article;
+		String content = llmService.translateText(shorten, settings.getLanguage());
 		String text = asLink(uri, resultArticle.getTitle());
 
 		contentToSpeech(content, text, callback);
 	}
 
-	private void processSubtitles(String text, Language language, Consumer<JobResult> callback) throws Exception {
+	private void processSubtitles(String text, UserSettings settings, Consumer<JobResult> callback) throws Exception {
 		LOG.info("Processing subtitles: {}", TextUtil.trimText(text, 256));
 
-		String atricle = llmService.subsToArticle(text);
-		String content = llmService.translateText(atricle, language);
+		String article = llmService.subsToArticle(text);
+		String shorten = settings.isShorten() ? llmService.shortenArticle(article) : article;
+		String content = llmService.translateText(shorten, settings.getLanguage());
 		String caption = Escaper.escapeMarkdown(llmService.writeCaption(content));
 
 		contentToSpeech(content, caption, callback);
 	}
 
-	private void processText(String text, Language language, Consumer<JobResult> callback) throws Exception {
+	private void processText(String text, UserSettings settings, Consumer<JobResult> callback) throws Exception {
 		LOG.info("Processing text `{}`", TextUtil.trimText(text, 256));
 
-		String content = llmService.translateText(text, language);
+		String shorten = settings.isShorten() ? llmService.shortenArticle(text) : text;
+		String content = llmService.translateText(shorten, settings.getLanguage());
 		String caption = Escaper.escapeMarkdown(llmService.writeCaption(content));
 
 		contentToSpeech(content, caption, callback);

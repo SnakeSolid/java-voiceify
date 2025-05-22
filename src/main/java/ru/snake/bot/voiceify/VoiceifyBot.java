@@ -25,6 +25,7 @@ import ru.snake.bot.voiceify.consume.Result;
 import ru.snake.bot.voiceify.database.ChatState;
 import ru.snake.bot.voiceify.database.Database;
 import ru.snake.bot.voiceify.database.Language;
+import ru.snake.bot.voiceify.database.UserSettings;
 import ru.snake.bot.voiceify.settings.Settings;
 import ru.snake.bot.voiceify.text.Replacer;
 import ru.snake.bot.voiceify.util.DomainMatcher;
@@ -46,13 +47,17 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private static final String CALLBACK_RUSSIAN = ":language_ru";
 
+	private static final String CALLBACK_FULL = ":shorten_false";
+
+	private static final String CALLBACK_SHORT = ":shorten_true";
+
 	private static final Map<String, Language> LANGUAGE_MAP = Map.ofEntries(
 		Map.entry(CALLBACK_IGNORE, Language.IGNORE),
 		Map.entry(CALLBACK_ENGLISH, Language.ENGLISH),
 		Map.entry(CALLBACK_RUSSIAN, Language.RUSSIAN)
 	);
 
-	private static final Language DEAFULT_LANGUAGE = Language.IGNORE;
+	private static final UserSettings DEAFULT_SETTINGS = UserSettings.create(Language.IGNORE, false);
 
 	private final Settings settings;
 
@@ -87,6 +92,8 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		onCallback(CALLBACK_IGNORE, this::setLanguage);
 		onCallback(CALLBACK_ENGLISH, this::setLanguage);
 		onCallback(CALLBACK_RUSSIAN, this::setLanguage);
+		onCallback(CALLBACK_FULL, this::setShorten);
+		onCallback(CALLBACK_SHORT, this::setShorten);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
 	}
@@ -180,12 +187,16 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private void commandSettings(final Context context, final String command) throws IOException {
-		Language language = database.getLanguage(context.getChatId(), DEAFULT_LANGUAGE);
+		UserSettings userSettings = database.getUserSettings(context.getChatId(), DEAFULT_SETTINGS);
+		Language language = userSettings.getLanguage();
+		boolean shorten = userSettings.isShorten();
 
 		sendMessage(
 			context.getChatId(),
-			Replacer
-				.replace(Resource.asText("texts/command_settings.txt"), Map.of("language", getDisplayName(language))),
+			Replacer.replace(
+				Resource.asText("texts/command_settings.txt"),
+				Map.of("language", getLanguageName(language), "shorten", getShortenName(shorten))
+			),
 			settingsMenu()
 		);
 	}
@@ -224,12 +235,26 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	private void setLanguage(final Context context, final String queryId, final String command) throws Exception {
 		sendCallbackAnswer(queryId);
 
-		Language language = LANGUAGE_MAP.getOrDefault(command, DEAFULT_LANGUAGE);
-		database.setLanguage(context.getChatId(), language);
+		UserSettings userSettings = database.getUserSettings(context.getChatId(), DEAFULT_SETTINGS);
+		Language language = LANGUAGE_MAP.getOrDefault(command, userSettings.getLanguage());
+		database.setUserSettings(context.getChatId(), userSettings.withLanguage(language));
 
 		sendMessage(
 			context.getChatId(),
-			Replacer.replace(Resource.asText("texts/language_set.txt"), Map.of("language", getDisplayName(language)))
+			Replacer.replace(Resource.asText("texts/language_set.txt"), Map.of("language", getLanguageName(language)))
+		);
+	}
+
+	private void setShorten(final Context context, final String queryId, final String command) throws Exception {
+		sendCallbackAnswer(queryId);
+
+		UserSettings userSettings = database.getUserSettings(context.getChatId(), DEAFULT_SETTINGS);
+		boolean shorten = command.equals(CALLBACK_SHORT);
+		database.setUserSettings(context.getChatId(), userSettings.withShorten(shorten));
+
+		sendMessage(
+			context.getChatId(),
+			Replacer.replace(Resource.asText("texts/shorten_set.txt"), Map.of("shorten", getShortenName(shorten)))
 		);
 	}
 
@@ -270,11 +295,20 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private ReplyKeyboard settingsMenu() {
-		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Оригинал").callbackData(CALLBACK_IGNORE).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("English").callbackData(CALLBACK_ENGLISH).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Русский").callbackData(CALLBACK_RUSSIAN).build());
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowTwo).build();
+		InlineKeyboardRow rowLanguage = new InlineKeyboardRow();
+		rowLanguage.add(InlineKeyboardButton.builder().text("Оригинал").callbackData(CALLBACK_IGNORE).build());
+		rowLanguage.add(InlineKeyboardButton.builder().text("English").callbackData(CALLBACK_ENGLISH).build());
+		rowLanguage.add(InlineKeyboardButton.builder().text("Русский").callbackData(CALLBACK_RUSSIAN).build());
+
+		InlineKeyboardRow rowShorten = new InlineKeyboardRow();
+		rowShorten.add(InlineKeyboardButton.builder().text("Читать оригинал").callbackData(CALLBACK_FULL).build());
+		rowShorten
+			.add(InlineKeyboardButton.builder().text("Сократить по возможности").callbackData(CALLBACK_SHORT).build());
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder()
+			.keyboardRow(rowLanguage)
+			.keyboardRow(rowShorten)
+			.build();
 
 		return keyboard;
 	}
@@ -283,22 +317,22 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void readText(final long chatId, final int massageId, final String text)
 			throws IOException, InterruptedException, OllamaBaseException {
-		Language language = database.getLanguage(chatId, DEAFULT_LANGUAGE);
-		worker.sendText(chatId, massageId, text, language);
+		UserSettings userSettings = database.getUserSettings(chatId, DEAFULT_SETTINGS);
+		worker.sendText(chatId, massageId, text, userSettings);
 
 		sendQueueStatus(chatId);
 	}
 
 	private void readLinks(final long chatId, final int massageId, final List<String> urlStrings) throws Exception {
-		Language language = database.getLanguage(chatId, DEAFULT_LANGUAGE);
+		UserSettings userSettings = database.getUserSettings(chatId, DEAFULT_SETTINGS);
 
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
 
 			if (DomainMatcher.match(host, settings.getVideoHosts())) {
-				worker.queueVideo(chatId, massageId, uri, language);
+				worker.queueVideo(chatId, massageId, uri, userSettings);
 			} else {
-				worker.queueArticle(chatId, massageId, uri, language);
+				worker.queueArticle(chatId, massageId, uri, userSettings);
 			}
 		}
 
@@ -306,8 +340,8 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private void readSubs(final long chatId, final int massageId, final String text) throws Exception {
-		Language language = database.getLanguage(chatId, DEAFULT_LANGUAGE);
-		worker.queueSubtitles(chatId, massageId, text, language);
+		UserSettings userSettings = database.getUserSettings(chatId, DEAFULT_SETTINGS);
+		worker.queueSubtitles(chatId, massageId, text, userSettings);
 
 		sendQueueStatus(chatId);
 	}
@@ -323,7 +357,7 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		}
 	}
 
-	private String getDisplayName(Language language) {
+	private String getLanguageName(Language language) {
 		switch (language) {
 		case IGNORE:
 			return "Не переводить";
@@ -336,6 +370,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 
 		default:
 			return "Неизвестно";
+		}
+	}
+
+	private String getShortenName(boolean shorten) {
+		if (shorten) {
+			return "Включен";
+		} else {
+			return "Отключен";
 		}
 	}
 

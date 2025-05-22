@@ -7,9 +7,9 @@ import org.mapdb.DBMaker;
 
 public interface Database {
 
-	public void setLanguage(final long chatId, final Language language);
+	public void setUserSettings(final long chatId, final UserSettings settings);
 
-	public Language getLanguage(final long chatId, final Language defaultLanguage);
+	public UserSettings getUserSettings(final long chatId, final UserSettings defaultSettings);
 
 	public void setChatState(final long chatId, final ChatState state);
 

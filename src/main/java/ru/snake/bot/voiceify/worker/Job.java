@@ -1,6 +1,6 @@
 package ru.snake.bot.voiceify.worker;
 
-import ru.snake.bot.voiceify.database.Language;
+import ru.snake.bot.voiceify.database.UserSettings;
 
 public class Job {
 
@@ -14,7 +14,7 @@ public class Job {
 
 	private final String text;
 
-	private final Language language;
+	private final UserSettings settings;
 
 	private Job(
 		final JobType type,
@@ -22,14 +22,14 @@ public class Job {
 		final int messageId,
 		final String uri,
 		final String text,
-		final Language language
+		final UserSettings settings
 	) {
 		this.type = type;
 		this.chatId = chatId;
 		this.messageId = messageId;
 		this.uri = uri;
 		this.text = text;
-		this.language = language;
+		this.settings = settings;
 	}
 
 	public JobType getType() {
@@ -52,30 +52,30 @@ public class Job {
 		return text;
 	}
 
-	public Language getLanguage() {
-		return language;
+	public UserSettings getSettings() {
+		return settings;
 	}
 
 	@Override
 	public String toString() {
 		return "Job [type=" + type + ", chatId=" + chatId + ", messageId=" + messageId + ", uri=" + uri + ", text="
-				+ text + ", language=" + language + "]";
+				+ text + ", settings=" + settings + "]";
 	}
 
-	public static Job text(long chatId, int messageId, String text, Language language) {
-		return new Job(JobType.TEXT, chatId, messageId, null, text, language);
+	public static Job text(long chatId, int messageId, String text, UserSettings settings) {
+		return new Job(JobType.TEXT, chatId, messageId, null, text, settings);
 	}
 
-	public static Job subtitles(long chatId, int messageId, String text, Language language) {
-		return new Job(JobType.SUBTITLES, chatId, messageId, null, text, language);
+	public static Job subtitles(long chatId, int messageId, String text, UserSettings settings) {
+		return new Job(JobType.SUBTITLES, chatId, messageId, null, text, settings);
 	}
 
-	public static Job article(long chatId, int messageId, String uri, Language language) {
-		return new Job(JobType.ARTICLE, chatId, messageId, uri, null, language);
+	public static Job article(long chatId, int messageId, String uri, UserSettings settings) {
+		return new Job(JobType.ARTICLE, chatId, messageId, uri, null, settings);
 	}
 
-	public static Job video(long chatId, int messageId, String uri, Language language) {
-		return new Job(JobType.VIDEO, chatId, messageId, uri, null, language);
+	public static Job video(long chatId, int messageId, String uri, UserSettings settings) {
+		return new Job(JobType.VIDEO, chatId, messageId, uri, null, settings);
 	}
 
 }

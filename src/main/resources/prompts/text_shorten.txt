@@ -1,0 +1,4 @@
+Shorten the provided text while preserving its main essence, key ideas, and important details. Remove secondary
+information, repetitions, and redundant phrasing. Do not add any additional comments, explanations or changes to the
+structure. Respond in the language of the provided text. Here is the text:
+

@@ -9,25 +9,29 @@ public class MapDBDatabase implements Database {
 
 	private final DB db;
 
-	private final Map<Long, Language> languages;
+	private final Map<Long, UserSettings> userSettings;
 
 	private final Map<Long, ChatState> chatStates;
 
-	private MapDBDatabase(final DB db, final Map<Long, Language> languages, final Map<Long, ChatState> chatStates) {
+	private MapDBDatabase(
+		final DB db,
+		final Map<Long, UserSettings> userSettings,
+		final Map<Long, ChatState> chatStates
+	) {
 		this.db = db;
-		this.languages = languages;
+		this.userSettings = userSettings;
 		this.chatStates = chatStates;
 	}
 
 	@Override
-	public void setLanguage(long chatId, Language language) {
-		languages.put(chatId, language);
+	public void setUserSettings(long chatId, UserSettings settings) {
+		userSettings.put(chatId, settings);
 		db.commit();
 	}
 
 	@Override
-	public Language getLanguage(long chatId, Language defaultLanguage) {
-		return languages.getOrDefault(chatId, defaultLanguage);
+	public UserSettings getUserSettings(long chatId, UserSettings defaultSettings) {
+		return userSettings.getOrDefault(chatId, defaultSettings);
 	}
 
 	@Override
@@ -43,16 +47,18 @@ public class MapDBDatabase implements Database {
 
 	@Override
 	public String toString() {
-		return "MapDBDatabase [db=" + db + ", languages=" + languages + ", chatStates=" + chatStates + "]";
+		return "MapDBDatabase [db=" + db + ", userSettings=" + userSettings + ", chatStates=" + chatStates + "]";
 	}
 
 	public static Database from(DB db) {
-		Map<Long, Language> languages = db.hashMap("languages", Serializer.LONG, LanguageSerializer.instance())
+		Map<Long, UserSettings> UserSettings = db
+			.hashMap("userSettings", Serializer.LONG, UserSettingsSerializer.instance())
 			.createOrOpen();
 		Map<Long, ChatState> chatStates = db.hashMap("chatStates", Serializer.LONG, ChatStateSerializer.instance())
 			.createOrOpen();
+		db.commit();
 
-		return new MapDBDatabase(db, languages, chatStates);
+		return new MapDBDatabase(db, UserSettings, chatStates);
 	}
 
 }
