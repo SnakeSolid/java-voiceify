@@ -29,16 +29,20 @@ public class LlmService {
 
 	private final int maxFragmentChars;
 
+	private final int maxShortenIterations;
+
 	public LlmService(
 		final LlmBackend backend,
 		final String modelName,
 		final int contextLength,
-		final int maxFragmentChars
+		final int maxFragmentChars,
+		final int maxShortenIterations
 	) {
 		this.backend = backend;
 		this.modelName = modelName;
 		this.contextLength = contextLength;
 		this.maxFragmentChars = maxFragmentChars;
+		this.maxShortenIterations = maxShortenIterations;
 	}
 
 	public String translateText(String text, Language language) throws IOException, LlmBackendException {
@@ -83,8 +87,12 @@ public class LlmService {
 		String prompt = Resource.asText("prompts/text_shorten.txt");
 		String result = text;
 
-		while (result.length() >= maxFragmentChars) {
+		for (int iteration = 0; iteration < maxShortenIterations; iteration += 1) {
 			result = executeQuery(result, prompt);
+
+			if (result.length() < maxFragmentChars) {
+				break;
+			}
 		}
 
 		return result;
@@ -135,7 +143,7 @@ public class LlmService {
 	@Override
 	public String toString() {
 		return "LlmService [backend=" + backend + ", modelName=" + modelName + ", contextLength=" + contextLength
-				+ ", maxFragmentChars=" + maxFragmentChars + "]";
+				+ ", maxFragmentChars=" + maxFragmentChars + ", maxShortenIterations=" + maxShortenIterations + "]";
 	}
 
 	public static LlmService create(Settings settings) {
@@ -143,7 +151,8 @@ public class LlmService {
 			LlmBackend.from(settings),
 			settings.getModelName(),
 			settings.getContextLength(),
-			settings.getMaxFragmentChars()
+			settings.getMaxFragmentChars(),
+			settings.getMaxShortenIterations()
 		);
 	}
 

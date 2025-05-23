@@ -33,6 +33,8 @@ public class Settings {
 
 	private final int maxFragmentChars;
 
+	private final int maxShortenIterations;
+
 	private final List<String> videoHosts;
 
 	private final CommandSettings ttsCommand;
@@ -47,6 +49,7 @@ public class Settings {
 		final int contextLength,
 		final long timeout,
 		final int maxFragmentChars,
+		final int maxShortenIterations,
 		final String ytDlpPath,
 		final List<String> videoHosts,
 		final CommandSettings ttsCommand
@@ -58,6 +61,7 @@ public class Settings {
 		this.contextLength = contextLength;
 		this.timeout = timeout;
 		this.maxFragmentChars = maxFragmentChars;
+		this.maxShortenIterations = maxShortenIterations;
 		this.ytDlpPath = ytDlpPath;
 		this.videoHosts = videoHosts;
 		this.ttsCommand = ttsCommand;
@@ -91,6 +95,10 @@ public class Settings {
 		return maxFragmentChars;
 	}
 
+	public int getMaxShortenIterations() {
+		return maxShortenIterations;
+	}
+
 	public String getYtDlpPath() {
 		return ytDlpPath;
 	}
@@ -107,8 +115,8 @@ public class Settings {
 	public String toString() {
 		return "Settings [backend=" + backend + ", baseUri=" + baseUri + ", apiKey=" + apiKey + ", modelName="
 				+ modelName + ", contextLength=" + contextLength + ", timeout=" + timeout + ", maxFragmentChars="
-				+ maxFragmentChars + ", videoHosts=" + videoHosts + ", ttsCommand=" + ttsCommand + ", ytDlpPath="
-				+ ytDlpPath + "]";
+				+ maxFragmentChars + ", maxShortenIterations=" + maxShortenIterations + ", videoHosts=" + videoHosts
+				+ ", ttsCommand=" + ttsCommand + ", ytDlpPath=" + ytDlpPath + "]";
 	}
 
 	public static Settings fromFile(final File configuration) throws ConfigurateException {
@@ -125,6 +133,7 @@ public class Settings {
 			root.node("context_length").getInt(CONTEXT_LENGTH),
 			root.node("timeout").getLong(DEFAULT_TIMEOUT),
 			root.node("max_fragment_chars").getInt(Integer.MAX_VALUE),
+			root.node("max_shorten_iterations").getInt(Integer.MAX_VALUE),
 			PathUtil.absolutePath(root.node("ytdlp").getString(YTDLP_PATH)),
 			videoHosts,
 			ttsCommand
