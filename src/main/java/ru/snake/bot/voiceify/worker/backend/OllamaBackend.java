@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import io.github.ollama4j.OllamaAPI;
 import io.github.ollama4j.exceptions.OllamaBaseException;
+import io.github.ollama4j.exceptions.ToolInvocationException;
 import io.github.ollama4j.models.chat.OllamaChatMessageRole;
 import io.github.ollama4j.models.chat.OllamaChatRequest;
 import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
@@ -31,7 +32,7 @@ public class OllamaBackend implements LlmBackend {
 
 		try {
 			chat = ollamaApi.chat(request);
-		} catch (OllamaBaseException | IOException | InterruptedException e) {
+		} catch (OllamaBaseException | IOException | InterruptedException | ToolInvocationException e) {
 			throw new LlmBackendException(e);
 		}
 

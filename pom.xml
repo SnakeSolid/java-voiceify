@@ -7,17 +7,17 @@
 	<description>Telegram bot to read articles from Internet.</description>
 
 	<properties>
-		<logback.version>1.5.16</logback.version>
-		<picocli.version>4.7.6</picocli.version>
-		<configurate.version>4.1.2</configurate.version>
-		<ollama.version>1.0.91</ollama.version>
-		<openai.version>0.41.0</openai.version>
+		<logback.version>1.5.18</logback.version>
+		<picocli.version>4.7.7</picocli.version>
+		<configurate.version>4.2.0</configurate.version>
+		<ollama.version>1.0.100</ollama.version>
+		<openai.version>1.6.1</openai.version>
 		<mapdb.version>3.1.0</mapdb.version>
 		<readability.version>1.0.8</readability.version>
-		<jsoup.version>1.18.3</jsoup.version>
-		<json.version>20250107</json.version>
-		<telegrambots.version>8.2.0</telegrambots.version>
-		<junit.version>5.11.4</junit.version>
+		<jsoup.version>1.20.1</jsoup.version>
+		<json.version>20250517</json.version>
+		<telegrambots.version>8.3.0</telegrambots.version>
+		<junit.version>5.12.2</junit.version>
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>11</maven.compiler.source>
