@@ -329,6 +329,14 @@ public class VoiceifyBot extends BotClientConsumer implements LongPollingSingleT
 		for (String uri : urlStrings) {
 			String host = URI.create(uri).getHost();
 
+			if (host == null) {
+				Map<String, String> params = Map.of("uri", uri);
+
+				sendMessage(chatId, Replacer.replace(Resource.asText("texts/invalid_uri.txt"), params));
+
+				continue;
+			}
+
 			if (DomainMatcher.match(host, settings.getVideoHosts())) {
 				worker.queueVideo(chatId, massageId, uri, userSettings);
 			} else {
